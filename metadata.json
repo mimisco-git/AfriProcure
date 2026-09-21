@@ -1,0 +1,6 @@
+{
+  "name": "AfriProcure - Contract Price Adjustment & Tender Risk Engine",
+  "description": "Algorithmic Contract Price Adjustment (CPA) and forensic tender evaluation platform designed for African public and capital procurement challenges.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
