@@ -17,10 +17,11 @@ import { AuditCertificateModal } from './components/AuditCertificateModal';
 import { PpaComplianceCenter } from './components/PpaComplianceCenter';
 import { ClaimsDisputeCenter } from './components/ClaimsDisputeCenter';
 import { ProjectModal } from './components/ProjectModal';
+import { SecuritiesAndVariations } from './components/SecuritiesAndVariations';
 import { Building2 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier'>('cpa');
+  const [activeTab, setActiveTab] = useState<'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities'>('cpa');
   const [portfolioProjects, setPortfolioProjects] = useState<ContractProject[]>(PORTFOLIO_PROJECTS);
   const [project, setProject] = useState<ContractProject>(DEFAULT_CONTRACT);
   const [currency, setCurrency] = useState<CurrencyCode>('NGN');
@@ -118,6 +119,13 @@ export default function App() {
 
         {activeTab === 'dossier' && (
           <BppDossierGenerator
+            project={project}
+            currency={currency}
+          />
+        )}
+
+        {activeTab === 'securities' && (
+          <SecuritiesAndVariations
             project={project}
             currency={currency}
           />

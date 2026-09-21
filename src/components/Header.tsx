@@ -1,11 +1,11 @@
 import React from 'react';
-import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, ChevronDown, Plus, Settings, Scale } from 'lucide-react';
+import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, ChevronDown, Plus, Settings, Scale, ShieldCheck } from 'lucide-react';
 import { ContractProject, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/cpaMath';
 
 interface HeaderProps {
-  activeTab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier';
-  setActiveTab: (tab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier') => void;
+  activeTab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities';
+  setActiveTab: (tab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities') => void;
   currency: CurrencyCode;
   setCurrency: (c: CurrencyCode) => void;
   onOpenAuditCertificate: () => void;
@@ -232,6 +232,19 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Building2 className="w-4 h-4 text-violet-700" />
             8. BPP Dossier & Treasury Voucher
+          </button>
+
+          <button
+            id="tab-securities"
+            onClick={() => setActiveTab('securities')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'securities'
+                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            9. Securities, VOs & FEC Memo
           </button>
         </nav>
       </div>

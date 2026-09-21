@@ -180,3 +180,59 @@ export interface MacroIndicator {
   agency: string;
   category: 'fx' | 'inflation' | 'commodity' | 'labor' | 'energy';
 }
+
+export interface ContractSecurity {
+  id: string;
+  securityType: 'advance_payment' | 'performance_bond' | 'retention_bond';
+  title: string;
+  issuingBank: string;
+  guaranteeReference: string;
+  originalAmount: number;
+  recoveredAmount: number;
+  issuanceDate: string;
+  expiryDate: string;
+  daysToExpiry: number;
+  status: 'compliant' | 'warning' | 'critical' | 'discharged';
+  statutoryClause: string;
+  notes: string;
+}
+
+export interface VariationOrder {
+  id: string;
+  voNumber: string;
+  title: string;
+  description: string;
+  approvedAmount: number;
+  approvalDate: string;
+  approvingAuthority: string;
+  bppNoObjectionRef: string;
+  category: 'subgrade_realignment' | 'bridge_hydraulics' | 'pavement_strengthening' | 'traffic_management';
+  timeExtensionDays: number;
+  status: 'approved' | 'in_review_bpp' | 'draft';
+}
+
+export interface OAuGfAuditQuery {
+  id: string;
+  queryRef: string;
+  title: string;
+  auditFinding: string;
+  allegedLossOrIrregularity: number;
+  statutoryDefense: string;
+  ppaCitations: string[];
+  fidicCitations: string[];
+  exhibits: string[];
+  status: 'cleared' | 'rebuttal_submitted' | 'pac_scheduled';
+}
+
+export interface TraditionalCostItem {
+  id: string;
+  item: string;
+  quantity: number;
+  unit: string;
+  baseRate: number;
+  currentInvoiceRate: number;
+  baseAmount: number;
+  currentAmount: number;
+  actualFluctuation: number;
+  invoiceRef: string;
+}
