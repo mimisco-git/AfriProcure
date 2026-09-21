@@ -2,6 +2,7 @@ import React from 'react';
 import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, ChevronDown, Plus, Settings, Scale, ShieldCheck } from 'lucide-react';
 import { ContractProject, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/cpaMath';
+import { AfriProcureLogo } from './AfriProcureLogo';
 
 interface HeaderProps {
   activeTab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities';
@@ -67,24 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Header Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-600/20 font-black text-lg tracking-tight shrink-0">
-              AP
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-                  AfriProcure
-                </h1>
-                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-stone-100 text-stone-700 border border-stone-200">
-                  Enterprise Edition
-                </span>
-              </div>
-              <p className="text-xs text-stone-600 hidden sm:block">
-                Automated Contract Price Adjustment (CPA), IPC Valuation Engine & Forensic Tender Screener
-              </p>
-            </div>
-          </div>
+          <AfriProcureLogo size="md" variant="full" />
 
           {/* Project Portfolio Switcher & Quick Actions */}
           <div className="flex flex-wrap items-center gap-2.5">

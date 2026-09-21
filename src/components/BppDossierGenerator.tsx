@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ContractProject, CurrencyCode } from '../types';
 import { calculateCpaMultiplier, formatCurrency, formatFullCurrency } from '../utils/cpaMath';
 import { ORGANIZATIONAL_PROCUREMENT_BLUEPRINT } from '../data/caseStudies';
+import { AfriProcureLogo } from './AfriProcureLogo';
 import { Landmark, FileCheck2, ShieldCheck, Printer, CheckCircle2, AlertTriangle, Building2, Download, Briefcase, FileSpreadsheet, Eye, ChevronRight } from 'lucide-react';
 
 interface BppDossierGeneratorProps {
@@ -458,15 +459,27 @@ export const BppDossierGenerator: React.FC<BppDossierGeneratorProps> = ({ projec
       {activeView === 'voucher' && (
         <div className="bg-white rounded-2xl p-6 sm:p-8 border border-stone-300 shadow-sm print:shadow-none print:border-none space-y-6 text-stone-900 font-serif">
           {/* Official Treasury Voucher Header */}
-          <div className="border-b-2 border-stone-900 pb-4 text-center space-y-1">
-            <div className="text-[10px] tracking-widest font-sans font-bold uppercase text-stone-500">
-              FEDERAL REPUBLIC OF NIGERIA • OFFICE OF THE ACCOUNTANT-GENERAL OF THE FEDERATION
+          <div className="border-b-2 border-stone-900 pb-4 space-y-3">
+            <div className="flex items-center justify-between font-sans">
+              <AfriProcureLogo size="sm" variant="badge" />
+              <div className="text-right">
+                <span className="text-[10px] font-mono uppercase bg-amber-100 text-amber-950 px-2 py-0.5 rounded font-bold border border-amber-300">
+                  TREASURY VOUCHER FORM 15
+                </span>
+                <p className="text-[10px] text-stone-500 font-mono mt-0.5">OAGF Mandatory Standard</p>
+              </div>
             </div>
-            <h2 className="text-xl font-black font-sans tracking-wide text-stone-900">
-              TREASURY FORM 15 (CAPITAL EXPENDITURE PAYMENT VOUCHER)
-            </h2>
-            <div className="text-xs font-mono text-stone-600">
-              Sub-Treasury Capital Warrant Discharge • PPA 2007 Section 37 Compliance
+
+            <div className="text-center space-y-1 pt-1">
+              <div className="text-[10px] tracking-widest font-sans font-bold uppercase text-stone-500">
+                FEDERAL REPUBLIC OF NIGERIA • OFFICE OF THE ACCOUNTANT-GENERAL OF THE FEDERATION
+              </div>
+              <h2 className="text-xl font-black font-sans tracking-wide text-stone-900">
+                TREASURY FORM 15 (CAPITAL EXPENDITURE PAYMENT VOUCHER)
+              </h2>
+              <div className="text-xs font-mono text-stone-600">
+                Sub-Treasury Capital Warrant Discharge • PPA 2007 Section 37 Compliance
+              </div>
             </div>
           </div>
 

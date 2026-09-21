@@ -18,6 +18,7 @@ import { PpaComplianceCenter } from './components/PpaComplianceCenter';
 import { ClaimsDisputeCenter } from './components/ClaimsDisputeCenter';
 import { ProjectModal } from './components/ProjectModal';
 import { SecuritiesAndVariations } from './components/SecuritiesAndVariations';
+import { AfriProcureLogo } from './components/AfriProcureLogo';
 import { Building2 } from 'lucide-react';
 
 export default function App() {
@@ -134,20 +135,23 @@ export default function App() {
 
       {/* Footer */}
       <footer className="no-print bg-white border-t border-stone-200 py-6 text-xs text-stone-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-amber-600" />
-            <span>
-              <strong>AfriProcure Enterprise</strong> • Public Infrastructure Procurement & Forensic Cost Engineering System
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AfriProcureLogo size="sm" variant="badge" />
+            <span className="hidden sm:inline text-stone-400">|</span>
+            <span className="text-stone-600 font-medium">
+              National Infrastructure Procurement & Forensic Cost Engineering Operating System
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-stone-500">
-            <span>FIDIC Sub-Clause 13.8</span>
+          <div className="flex items-center gap-3 text-stone-500 font-mono text-[11px]">
+            <span>FIDIC Red 13.8</span>
             <span>•</span>
-            <span>Nigerian PPA 2007 Clause 39</span>
+            <span>PPA 2007 (Nigeria)</span>
             <span>•</span>
-            <span>Open Contracting Partnership (OCDS)</span>
+            <span>BPP Prior-Review</span>
+            <span>•</span>
+            <span>OCDS Compliant</span>
           </div>
         </div>
       </footer>

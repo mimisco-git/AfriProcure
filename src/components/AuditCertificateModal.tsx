@@ -2,6 +2,7 @@ import React from 'react';
 import { ContractProject, CurrencyCode } from '../types';
 import { calculateCpaMultiplier, formatCurrency, formatFullCurrency, generateIpcSchedule } from '../utils/cpaMath';
 import { X, Printer, ShieldCheck, Award } from 'lucide-react';
+import { AfriProcureLogo } from './AfriProcureLogo';
 
 interface AuditCertificateModalProps {
   project: ContractProject;
@@ -57,15 +58,27 @@ export const AuditCertificateModal: React.FC<AuditCertificateModalProps> = ({
         {/* Certificate Printable Body */}
         <div className="p-6 sm:p-10 overflow-y-auto font-sans text-stone-900 bg-white leading-relaxed text-xs sm:text-sm">
           {/* Official Letterhead */}
-          <div className="text-center pb-6 border-b-2 border-stone-900 space-y-1">
-            <div className="text-[11px] uppercase tracking-widest font-extrabold text-stone-600">
-              Federal Republic of Nigeria • Bureau of Public Procurement (BPP) Compliant
+          <div className="pb-6 border-b-2 border-stone-900 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <AfriProcureLogo size="md" variant="badge" />
+              <div className="text-right">
+                <span className="inline-block px-2.5 py-1 rounded bg-stone-100 text-stone-800 font-mono text-[10px] font-bold border border-stone-300">
+                  STATUTORY AUDIT FORM CPA-01
+                </span>
+                <p className="text-[10px] text-stone-500 font-mono mt-0.5">Cert Ref: BPP/RR/CPA/{ipc.ipcNumber.toString().padStart(4, '0')}</p>
+              </div>
             </div>
-            <h1 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight uppercase">
-              INTERIM PAYMENT CERTIFICATE & STATUTORY PRICE ADJUSTMENT VALUATION
-            </h1>
-            <div className="text-xs font-serif italic text-stone-600">
-              Issued pursuant to Section 39 of the Public Procurement Act (PPA 2007) & FIDIC Conditions of Contract (Pink Book Clause 13.8)
+
+            <div className="text-center space-y-1 pt-1">
+              <div className="text-[11px] uppercase tracking-widest font-extrabold text-stone-600">
+                Federal Republic of Nigeria • Bureau of Public Procurement (BPP) Compliant
+              </div>
+              <h1 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight uppercase">
+                INTERIM PAYMENT CERTIFICATE & STATUTORY PRICE ADJUSTMENT VALUATION
+              </h1>
+              <div className="text-xs font-serif italic text-stone-600">
+                Issued pursuant to Section 39 of the Public Procurement Act (PPA 2007) & FIDIC Conditions of Contract (Pink Book Clause 13.8)
+              </div>
             </div>
           </div>
 

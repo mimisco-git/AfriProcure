@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ContractProject, CurrencyCode, ContractSecurity, VariationOrder, OAuGfAuditQuery, TraditionalCostItem } from '../types';
 import { DEFAULT_CONTRACT_SECURITIES, DEFAULT_VARIATION_ORDERS, DEFAULT_OAUGF_AUDIT_QUERIES, DEFAULT_TRADITIONAL_COST_ITEMS } from '../data/procurementOfficerData';
 import { formatCurrency, formatFullCurrency, calculateCpaMultiplier } from '../utils/cpaMath';
+import { AfriProcureLogo } from './AfriProcureLogo';
 import { 
   ShieldCheck, 
   ShieldAlert, 
@@ -746,6 +747,16 @@ export const SecuritiesAndVariations: React.FC<SecuritiesAndVariationsProps> = (
 
           {/* Memo Document Preview */}
           <div className="bg-stone-50 rounded-2xl p-6 sm:p-8 border border-stone-300 font-serif text-stone-900 space-y-6 shadow-sm max-w-4xl mx-auto">
+            <div className="flex items-center justify-between border-b border-stone-300 pb-3 font-sans">
+              <AfriProcureLogo size="sm" variant="badge" />
+              <div className="text-right">
+                <span className="text-[10px] font-mono uppercase bg-red-100 text-red-900 px-2 py-0.5 rounded font-bold border border-red-300">
+                  TOP SECRET • COUNCIL COPY
+                </span>
+                <p className="text-[10px] text-stone-500 font-mono mt-0.5">Vote: 0234001001 • BPP Cert No. 948</p>
+              </div>
+            </div>
+
             <div className="text-center border-b-2 border-stone-900 pb-4 space-y-1">
               <div className="text-xs font-sans font-bold text-red-700 uppercase tracking-widest">
                 CONFIDENTIAL • FOR THE EXCLUSIVE USE OF COUNCIL MEMBERS
