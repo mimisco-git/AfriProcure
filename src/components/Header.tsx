@@ -1,12 +1,14 @@
 import React from 'react';
-import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, ChevronDown, Plus, Settings, Scale, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, ChevronDown, Plus, Settings, Scale, ShieldCheck, FileSpreadsheet } from 'lucide-react';
 import { ContractProject, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/cpaMath';
 import { AfriProcureLogo } from './AfriProcureLogo';
 
+export type AppTabType = 'bed' | 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities';
+
 interface HeaderProps {
-  activeTab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities';
-  setActiveTab: (tab: 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities') => void;
+  activeTab: AppTabType;
+  setActiveTab: (tab: AppTabType) => void;
   currency: CurrencyCode;
   setCurrency: (c: CurrencyCode) => void;
   onOpenAuditCertificate: () => void;
@@ -114,6 +116,19 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Navigation Tabs */}
         <nav className="flex items-center gap-1 sm:gap-1.5 mt-3 pt-2.5 border-t border-stone-100 overflow-x-auto scrollbar-none text-xs font-semibold">
+          <button
+            id="tab-bed"
+            onClick={() => setActiveTab('bed')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
+              activeTab === 'bed'
+                ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+            }`}
+          >
+            <FileSpreadsheet className={`w-4 h-4 ${activeTab === 'bed' ? 'text-stone-950' : 'text-amber-600'}`} />
+            0. Bid Evaluation Desk (RFQ & Tender)
+          </button>
+
           <button
             id="tab-cpa"
             onClick={() => setActiveTab('cpa')}

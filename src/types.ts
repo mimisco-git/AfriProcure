@@ -236,3 +236,122 @@ export interface TraditionalCostItem {
   actualFluctuation: number;
   invoiceRef: string;
 }
+
+// ==========================================
+// BID EVALUATION DESK (RFQ & TENDER) TYPES
+// ==========================================
+
+export interface RequisitionItem {
+  id: string;
+  name: string;
+  specification: string;
+  unit: string;
+  quantity: number;
+  budgetBenchmarkPrice?: number;
+}
+
+export interface QuotationLineItem {
+  id: string;
+  name: string;
+  specification: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  matchReqItemId?: string; // ID of requisition item it corresponds to
+  sourcePageNote?: string; // e.g. "p. 1 line 4"
+}
+
+export interface SupplierQuotation {
+  id: string;
+  supplierName: string;
+  address: string;
+  phone: string;
+  email: string;
+  rcNumber: string; // Corporate Affairs Commission (CAC) RC Number
+  tin: string; // Federal Inland Revenue Service (FIRS) TIN
+  vatRegistration?: string;
+  bank: {
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+  };
+  signatory: string;
+  quoteRef: string;
+  quoteDate: string;
+  validity: string; // e.g. "90 days" or specific date
+  deliveryPeriod: string; // e.g. "10 working days"
+  paymentTerms: string; // e.g. "50% advance, 50% on delivery"
+  warranty: string; // e.g. "12 months"
+  currency: CurrencyCode;
+  exchangeRateToNgn?: number; // Rate if foreign currency
+  vat: {
+    isInclusive: boolean;
+    rate: number; // e.g. 7.5%
+    statedAmount?: number;
+  };
+  subtotal: number;
+  total: number;
+  items: QuotationLineItem[];
+  notes: string[];
+}
+
+export interface EvaluatedSupplier {
+  quotation: SupplierQuotation;
+  evaluatedCost: number;
+  baseCost: number;
+  vatAdded: number;
+  vatNotes?: string;
+  lineSumDiscrepancy: boolean;
+  lineSumDifference: number;
+  itemsQuotedCount: number;
+  itemsRequiredCount: number;
+  completenessPct: number;
+  isResponsive: boolean;
+  blocks: string[];
+  queries: string[];
+  infos: string[];
+  validUntilDate?: string;
+  validityDaysLeft?: number;
+  rank: number;
+}
+
+export interface CollusionCheck {
+  type: 'phone' | 'email' | 'address' | 'bank_account' | 'bank_mismatch' | 'signatory' | 'tin' | 'cac' | 'rounding';
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  description: string;
+  involvedSuppliers: string[];
+}
+
+export interface BidEvaluationResult {
+  suppliers: EvaluatedSupplier[];
+  winner?: EvaluatedSupplier;
+  runnerUp?: EvaluatedSupplier;
+  highestBid?: EvaluatedSupplier;
+  lowestOverallBid?: EvaluatedSupplier;
+  savingsVsHighest: number;
+  savingsPct: number;
+  collusionFlags: CollusionCheck[];
+  totalBidsCount: number;
+  responsiveBidsCount: number;
+  nonResponsiveBidsCount: number;
+  narrative: string;
+}
+
+export interface SavedBidEvaluation {
+  id: string;
+  savedAt: number;
+  organization: string;
+  procurementTitle: string;
+  requisitionRef: string;
+  reportRef: string;
+  preparedBy: string;
+  reviewedBy: string;
+  items: RequisitionItem[];
+  quotations: SupplierQuotation[];
+  winnerName?: string;
+  evaluatedCost?: number;
+  currency: CurrencyCode;
+}
+

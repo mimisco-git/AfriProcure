@@ -18,11 +18,13 @@ import { PpaComplianceCenter } from './components/PpaComplianceCenter';
 import { ClaimsDisputeCenter } from './components/ClaimsDisputeCenter';
 import { ProjectModal } from './components/ProjectModal';
 import { SecuritiesAndVariations } from './components/SecuritiesAndVariations';
+import { BidEvaluationDesk } from './components/BidEvaluationDesk';
 import { AfriProcureLogo } from './components/AfriProcureLogo';
+import { AppTabType } from './components/Header';
 import { Building2 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities'>('cpa');
+  const [activeTab, setActiveTab] = useState<AppTabType>('bed');
   const [portfolioProjects, setPortfolioProjects] = useState<ContractProject[]>(PORTFOLIO_PROJECTS);
   const [project, setProject] = useState<ContractProject>(DEFAULT_CONTRACT);
   const [currency, setCurrency] = useState<CurrencyCode>('NGN');
@@ -49,6 +51,25 @@ export default function App() {
     });
   };
 
+  const handleTransferAwardToContract = (newProjectData: Partial<ContractProject>) => {
+    const newContract: ContractProject = {
+      ...project,
+      id: 'proj-' + Date.now(),
+      title: newProjectData.title || project.title,
+      contractCode: newProjectData.contractCode || project.contractCode,
+      procuringEntity: newProjectData.procuringEntity || project.procuringEntity,
+      contractorName: newProjectData.contractorName || project.contractorName,
+      contractSumInitial: newProjectData.contractSumInitial || project.contractSumInitial,
+      currency: newProjectData.currency || currency,
+      awardDate: newProjectData.awardDate || new Date().toISOString().split('T')[0],
+      baseDate: newProjectData.baseDate || new Date().toISOString().split('T')[0],
+    };
+
+    setProject(newContract);
+    setPortfolioProjects((prev) => [newContract, ...prev]);
+    setActiveTab('cpa');
+  };
+
   return (
     <div className="min-h-screen bg-stone-100/60 text-stone-900 flex flex-col font-sans">
       {/* App Header */}
@@ -66,6 +87,13 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        {activeTab === 'bed' && (
+          <BidEvaluationDesk
+            currency={currency}
+            onTransferToContract={handleTransferAwardToContract}
+          />
+        )}
+
         {activeTab === 'cpa' && (
           <CpaCalculator
             project={project}
