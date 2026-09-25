@@ -121,11 +121,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('bed')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'bed'
-                ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <FileSpreadsheet className={`w-4 h-4 ${activeTab === 'bed' ? 'text-stone-950' : 'text-amber-600'}`} />
+            <FileSpreadsheet className={`w-4 h-4 ${activeTab === 'bed' ? 'text-amber-400' : 'text-amber-600'}`} />
             0. Bid Evaluation Desk (RFQ & Tender)
           </button>
 
@@ -134,11 +134,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('cpa')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'cpa'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Calculator className="w-4 h-4 text-amber-600" />
+            <Calculator className={`w-4 h-4 ${activeTab === 'cpa' ? 'text-amber-400' : 'text-amber-600'}`} />
             1. CPA Indexation Engine
           </button>
 
@@ -147,11 +147,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('ipc')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'ipc'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            <TrendingUp className={`w-4 h-4 ${activeTab === 'ipc' ? 'text-amber-400' : 'text-emerald-600'}`} />
             2. IPC Cashflow & Default Risk
           </button>
 
@@ -160,11 +160,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('tender')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'tender'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <ShieldAlert className="w-4 h-4 text-red-600" />
+            <ShieldAlert className={`w-4 h-4 ${activeTab === 'tender' ? 'text-amber-400' : 'text-red-600'}`} />
             3. Tender Shield (ALT & Collusion)
           </button>
 
@@ -173,11 +173,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('claims')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'claims'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Scale className="w-4 h-4 text-amber-700" />
+            <Scale className={`w-4 h-4 ${activeTab === 'claims' ? 'text-amber-400' : 'text-amber-700'}`} />
             4. Claims & Delayed Payment Arbitration
           </button>
 
@@ -186,11 +186,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('ppa')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'ppa'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Landmark className="w-4 h-4 text-amber-600" />
+            <Landmark className={`w-4 h-4 ${activeTab === 'ppa' ? 'text-amber-400' : 'text-amber-600'}`} />
             5. PPA 2007 & BPP Thresholds
           </button>
 
@@ -199,11 +199,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('macro')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'macro'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Layers className="w-4 h-4 text-indigo-600" />
+            <Layers className={`w-4 h-4 ${activeTab === 'macro' ? 'text-amber-400' : 'text-indigo-600'}`} />
             6. Material Price Benchmarks
           </button>
 
@@ -212,11 +212,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('cases')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'cases'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <FileCheck2 className="w-4 h-4 text-cyan-700" />
+            <FileCheck2 className={`w-4 h-4 ${activeTab === 'cases' ? 'text-amber-400' : 'text-cyan-700'}`} />
             7. Infrastructure Case Studies
           </button>
 
@@ -225,11 +225,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('dossier')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'dossier'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <Building2 className="w-4 h-4 text-violet-700" />
+            <Building2 className={`w-4 h-4 ${activeTab === 'dossier' ? 'text-amber-400' : 'text-violet-700'}`} />
             8. BPP Dossier & Treasury Voucher
           </button>
 
@@ -238,11 +238,11 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('securities')}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
               activeTab === 'securities'
-                ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200 shadow-xs'
+                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
             }`}
           >
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <ShieldCheck className={`w-4 h-4 ${activeTab === 'securities' ? 'text-amber-400' : 'text-emerald-600'}`} />
             9. Securities, VOs & FEC Memo
           </button>
         </nav>

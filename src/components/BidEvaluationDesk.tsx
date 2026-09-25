@@ -38,6 +38,8 @@ import {
   FileSignature,
   CheckSquare,
   FileBadge,
+  Shield,
+  Sun,
 } from 'lucide-react';
 import {
   RequisitionItem,
@@ -749,89 +751,105 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Controls */}
-      <div className="no-print bg-stone-900 text-stone-100 rounded-2xl p-5 shadow-lg border border-stone-800">
+      <div className="no-print bg-stone-900 text-stone-100 rounded-2xl p-6 shadow-md border border-stone-800 space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              RFQ & Tender Processing Hub
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
+              <FileSpreadsheet className="w-4 h-4 text-amber-400" />
+              <span>RFQ & Tender Evaluation Desk</span>
+              <span className="text-stone-500 font-normal">·</span>
+              <span className="text-stone-400 font-mono text-[11px] normal-case">PPA 2007 Sections 31, 32 & 34</span>
             </div>
-            <h1 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-              Bid Evaluation Desk
-              <span className="text-xs px-2 py-0.5 font-mono font-medium rounded-md bg-stone-800 text-stone-300">
-                PPA 2007 Sec 32/33
-              </span>
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-white">
+              Forensic Bid Audit & Award Evaluation Engine
             </h1>
-            <p className="text-xs md:text-sm text-stone-400">
-              Turn multi-supplier quotations into statutory comparative audit reports, detect collusion, harmonize VAT, and recommend lowest evaluated responsive bids.
+            <p className="text-xs md:text-sm text-stone-400 max-w-3xl leading-relaxed">
+              Harmonize multi-supplier tender schedules, verify preliminary statutory certifications, execute automatic arithmetic error corrections under PPA Section 31, and determine the Lowest Evaluated Responsive Bidder.
             </p>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               onClick={handleLoadWorkedExample}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-md transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs transition-colors"
               title="Load full worked example with 3 real-world bidders, VAT harmonization, and compliance flags"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Load Worked Example
+              Worked Example
             </button>
 
             <button
               onClick={() => setShowSavedModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs border border-stone-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs border border-stone-700/80 transition-colors"
             >
               <History className="w-3.5 h-3.5 text-stone-400" />
-              Past Evaluations ({savedEvaluations.length})
+              Saved Dossiers ({savedEvaluations.length})
             </button>
 
             <button
               onClick={handleSaveEvaluation}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs border border-stone-700 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs border border-stone-700/80 transition-colors"
             >
               <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Save Dossier
+              Save Evaluation
             </button>
           </div>
         </div>
 
-        {/* Step Navigation Tabs */}
-        <div className="mt-5 pt-4 border-t border-stone-800 flex items-center gap-2 overflow-x-auto text-xs font-semibold">
+        {/* Executive Step Progress Controller */}
+        <div className="pt-4 border-t border-stone-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           <button
             onClick={() => setActiveStep('setup')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${
+            className={`p-3 rounded-xl text-left border transition-all ${
               activeStep === 'setup'
-                ? 'bg-amber-400 text-stone-950 font-bold shadow-xs'
-                : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                ? 'bg-amber-500/10 border-amber-500 text-white shadow-xs'
+                : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-200'
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-stone-900/30 flex items-center justify-center text-[10px] font-mono">1</span>
-            Requisition & Scope Setup ({reqItems.length} items)
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-mono font-bold tracking-wide uppercase ${activeStep === 'setup' ? 'text-amber-400' : 'text-stone-500'}`}>
+                Stage 01
+              </span>
+              <span className="text-[10px] font-mono text-stone-400">{reqItems.length} line items</span>
+            </div>
+            <div className="font-bold text-xs text-stone-100 mt-1">Requisition & Benchmark Scope</div>
           </button>
 
           <button
             onClick={() => setActiveStep('quotations')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${
+            className={`p-3 rounded-xl text-left border transition-all ${
               activeStep === 'quotations'
-                ? 'bg-amber-400 text-stone-950 font-bold shadow-xs'
-                : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                ? 'bg-amber-500/10 border-amber-500 text-white shadow-xs'
+                : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-200'
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-stone-900/30 flex items-center justify-center text-[10px] font-mono">2</span>
-            Supplier Quotations Audit ({quotations.length} bidders)
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-mono font-bold tracking-wide uppercase ${activeStep === 'quotations' ? 'text-amber-400' : 'text-stone-500'}`}>
+                Stage 02
+              </span>
+              <span className="text-[10px] font-mono text-stone-400">{quotations.length} participating bidders</span>
+            </div>
+            <div className="font-bold text-xs text-stone-100 mt-1">Quotations & Statutory Eligibility</div>
           </button>
 
           <button
             onClick={() => setActiveStep('report')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all ${
+            className={`p-3 rounded-xl text-left border transition-all ${
               activeStep === 'report'
-                ? 'bg-amber-400 text-stone-950 font-bold shadow-xs'
-                : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                ? 'bg-amber-500/10 border-amber-500 text-white shadow-xs'
+                : 'bg-stone-950/60 border-stone-800 text-stone-400 hover:border-stone-700 hover:text-stone-200'
             }`}
           >
-            <span className="w-5 h-5 rounded-full bg-stone-900/30 flex items-center justify-center text-[10px] font-mono">3</span>
-            Evaluation Report & Matrix (PPA 2007)
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-mono font-bold tracking-wide uppercase ${activeStep === 'report' ? 'text-amber-400' : 'text-stone-500'}`}>
+                Stage 03
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400">
+                {evaluationResult.winner ? '✓ Award Recommended' : 'Pending Audit'}
+              </span>
+            </div>
+            <div className="font-bold text-xs text-stone-100 mt-1">Comparative Matrix & Award Report</div>
           </button>
         </div>
       </div>
@@ -845,15 +863,15 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
           <div className="bg-stone-900 text-stone-100 rounded-2xl p-5 border border-stone-800 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold text-[10px] border border-amber-400/30 uppercase">
-                  <Layers className="w-3 h-3" />
-                  Pre-Configured Procurement Scenarios
+                <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Standard Institutional Tender Presets</span>
                 </div>
                 <h3 className="text-sm font-bold text-white mt-1">
-                  Load Standard Institutional Tender Presets (1-Click)
+                  Load Realistic Public Procurement Scenarios
                 </h3>
                 <p className="text-xs text-stone-400">
-                  Switch between infrastructure domains with realistic specifications, competitive quotations, and statutory credentials.
+                  Switch between standard infrastructure domains with authenticated specifications, competitive vendor submissions, and statutory credentials.
                 </p>
               </div>
             </div>
@@ -869,9 +887,14 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs">🛡️ Marine Safety & PPE</span>
+                  <span className="font-bold text-xs flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-amber-400" />
+                    Marine Safety & PPE
+                  </span>
                   {activePreset === 'marine_ppe' && (
-                    <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">ACTIVE</span>
+                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded font-mono">
+                      LOADED
+                    </span>
                   )}
                 </div>
                 <div className="text-[11px] text-stone-400 mt-1">Delta Marine Services Ltd</div>
@@ -888,9 +911,14 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs">☀️ Solar Mini-Grid & Storage</span>
+                  <span className="font-bold text-xs flex items-center gap-1.5">
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    Solar Mini-Grid & Storage
+                  </span>
                   {activePreset === 'solar_minigrid' && (
-                    <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">ACTIVE</span>
+                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded font-mono">
+                      LOADED
+                    </span>
                   )}
                 </div>
                 <div className="text-[11px] text-stone-400 mt-1">Rural Electrification Agency (REA)</div>
@@ -907,9 +935,14 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs">🛣️ Highway Bitumen & Asphalt</span>
+                  <span className="font-bold text-xs flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-amber-400" />
+                    Highway Bitumen & Asphalt
+                  </span>
                   {activePreset === 'highway_pavement' && (
-                    <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">ACTIVE</span>
+                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded font-mono">
+                      LOADED
+                    </span>
                   )}
                 </div>
                 <div className="text-[11px] text-stone-400 mt-1">Federal Ministry of Works</div>
@@ -1083,7 +1116,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                     <FileText className="w-4 h-4 text-amber-600" />
                     Mandatory Requisition Items & Technical Specifications
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-mono text-xs font-bold">
+                  <span className="px-2 py-0.5 rounded-sm bg-stone-100 text-stone-700 font-mono text-xs font-semibold border border-stone-200">
                     {reqItems.length} items
                   </span>
                 </div>
@@ -1273,13 +1306,13 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-stone-900 text-sm">{q.supplierName}</h3>
                           {evalSupplier?.isResponsive ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 font-bold text-[10px] border border-emerald-200">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               Responsive
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold text-[10px]">
-                              <XCircle className="w-3 h-3 text-red-600" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-rose-50 text-rose-800 font-bold text-[10px] border border-rose-200">
+                              <XCircle className="w-3 h-3 text-rose-600" />
                               Non-Responsive / Disqualified
                             </span>
                           )}
@@ -1758,9 +1791,9 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
 
             {/* Document Title */}
             <div className="text-center space-y-1">
-              <span className="inline-block px-3 py-0.5 rounded-full bg-amber-100 text-amber-900 font-black text-[11px] tracking-wide uppercase">
-                Official Recommendation for Contract Award
-              </span>
+              <div className="text-[11px] font-bold text-amber-800 tracking-wider uppercase">
+                Official Statutory Recommendation for Contract Award
+              </div>
               <h1 className="text-xl sm:text-2xl font-black text-stone-900">
                 BID EVALUATION REPORT & FORENSIC QUOTATION AUDIT
               </h1>
@@ -1771,23 +1804,23 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
 
             {/* Statutory Award Winner Banner */}
             {evaluationResult.winner ? (
-              <div className="bg-linear-to-r from-emerald-900 via-stone-900 to-stone-950 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-emerald-500/30">
+              <div className="bg-linear-to-r from-emerald-950 via-stone-900 to-stone-950 text-white rounded-2xl p-6 shadow-md border border-emerald-500/40">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1.5">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/40">
-                      <Award className="w-4 h-4 text-emerald-400" />
-                      Statutory Lowest Evaluated Responsive Bidder (PPA 2007)
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                      <Award className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Statutory Lowest Evaluated Responsive Bidder (PPA 2007)</span>
                     </div>
                     <h3 className="text-xl sm:text-2xl font-black text-white">
                       {evaluationResult.winner.quotation.supplierName}
                     </h3>
                     <p className="text-xs text-stone-300">
-                      CAC Registration: <strong>{evaluationResult.winner.quotation.rcNumber}</strong> | TIN: <strong>{evaluationResult.winner.quotation.tin}</strong> | Delivery: <strong>{evaluationResult.winner.quotation.deliveryPeriod}</strong>
+                      CAC Registration: <strong className="font-mono text-white">{evaluationResult.winner.quotation.rcNumber}</strong> · FIRS TIN: <strong className="font-mono text-white">{evaluationResult.winner.quotation.tin}</strong> · Delivery: <strong className="text-white">{evaluationResult.winner.quotation.deliveryPeriod}</strong>
                     </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4">
-                    <div className="bg-stone-800/80 rounded-xl p-3 border border-stone-700/60 text-right">
+                    <div className="bg-stone-800/90 rounded-xl p-3.5 border border-stone-700/70 text-right">
                       <div className="text-[10px] uppercase font-bold text-stone-400">Evaluated Landed Cost</div>
                       <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
                         {formatCurrency(evaluationResult.winner.evaluatedCost, currency)}
@@ -1798,7 +1831,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                     </div>
 
                     {evaluationResult.savingsVsHighest > 0 && (
-                      <div className="bg-emerald-950/60 rounded-xl p-3 border border-emerald-700/40 text-right">
+                      <div className="bg-emerald-950/70 rounded-xl p-3.5 border border-emerald-700/50 text-right">
                         <div className="text-[10px] uppercase font-bold text-emerald-300 flex items-center justify-end gap-1">
                           <TrendingDown className="w-3.5 h-3.5" />
                           Public Savings vs High
@@ -1807,25 +1840,25 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           {formatCurrency(evaluationResult.savingsVsHighest, currency)}
                         </div>
                         <div className="text-[10px] text-emerald-400 font-medium">
-                          {evaluationResult.savingsPct.toFixed(1)}% expenditure saved
+                          {evaluationResult.savingsPct.toFixed(1)}% public expenditure saved
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-stone-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="mt-4 pt-3.5 border-t border-stone-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2 text-stone-300">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Verified: Scope Completeness ({evaluationResult.winner.itemsQuotedCount}/{evaluationResult.winner.itemsRequiredCount} items)</span>
-                    <span>•</span>
-                    <span>Direct Settlement to {evaluationResult.winner.quotation.bank.bankName}</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Scope Completeness: <strong className="text-white font-mono">{evaluationResult.winner.itemsQuotedCount}/{evaluationResult.winner.itemsRequiredCount}</strong> items</span>
+                    <span className="text-stone-500">·</span>
+                    <span>Direct Settlement: <strong className="text-white">{evaluationResult.winner.quotation.bank.bankName}</strong></span>
                   </div>
 
                   {onTransferToContract && (
                     <button
                       onClick={handlePushWinnerToContract}
-                      className="no-print inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs shadow-sm transition-colors"
+                      className="no-print inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs shadow-xs transition-colors"
                     >
                       <Building className="w-3.5 h-3.5" />
                       Load Winner into Contract & CPA Engine
@@ -1968,24 +2001,24 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
                           <span
-                            className={`w-5 h-5 rounded-full flex items-center justify-center font-mono text-[10px] font-bold ${
+                            className={`w-5 h-5 rounded-md flex items-center justify-center font-mono text-[10px] font-bold ${
                               isWinner
                                 ? 'bg-emerald-600 text-white'
                                 : s.isResponsive
                                 ? 'bg-stone-800 text-stone-100'
-                                : 'bg-red-100 text-red-700'
+                                : 'bg-rose-100 text-rose-700'
                             }`}
                           >
                             {s.rank}
                           </span>
                           <span className="font-bold text-stone-900">{s.quotation.supplierName}</span>
                           {isWinner && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
                               ★ RECOMMENDED WINNER
                             </span>
                           )}
                           {!s.isResponsive && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded-sm bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
                               Disqualified
                             </span>
                           )}
@@ -1995,14 +2028,14 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                         </div>
                       </div>
 
-                      <div className="w-full bg-stone-100 h-3 rounded-full overflow-hidden flex items-center">
+                      <div className="w-full bg-stone-100 h-2.5 rounded-md overflow-hidden flex items-center">
                         <div
-                          className={`h-full transition-all duration-500 rounded-full ${
+                          className={`h-full transition-all duration-500 rounded-xs ${
                             isWinner
                               ? 'bg-emerald-600'
                               : s.isResponsive
-                              ? 'bg-blue-600'
-                              : 'bg-red-400'
+                              ? 'bg-amber-600'
+                              : 'bg-rose-400'
                           }`}
                           style={{ width: `${widthPct}%` }}
                         />
@@ -2062,11 +2095,11 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                         >
                           <td className="px-3 py-2.5">
                             {isWinner ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px]">
+                              <span className="font-bold text-emerald-800 flex items-center gap-1 font-mono text-xs">
                                 ★ Rank 1
                               </span>
                             ) : (
-                              <span className="font-mono text-stone-600">Rank {s.rank}</span>
+                              <span className="font-mono text-stone-600 text-xs">Rank {s.rank}</span>
                             )}
                           </td>
                           <td className="px-3 py-2.5">
@@ -2075,10 +2108,10 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="font-mono text-[11px] text-stone-800">
-                              {s.quotation.rcNumber || <span className="text-red-600 font-bold">Missing RC#</span>}
+                              {s.quotation.rcNumber || <span className="text-rose-600 font-bold">Missing RC#</span>}
                             </div>
                             <div className="font-mono text-[10px] text-stone-500">
-                              {s.quotation.tin || <span className="text-red-600">Missing TIN</span>}
+                              {s.quotation.tin || <span className="text-rose-600">Missing TIN</span>}
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-right font-mono font-medium text-stone-800">
@@ -2094,16 +2127,16 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             {vatExempt ? (
-                              <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[10px] font-medium">
-                                0% Exempted
+                              <span className="text-stone-600 text-[11px] font-medium">
+                                0% Exempt
                               </span>
                             ) : s.quotation.vat.isInclusive ? (
-                              <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[10px] font-medium">
+                              <span className="text-stone-700 text-[11px] font-medium">
                                 7.5% Included
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-medium">
-                                + ₦{s.vatAdded.toLocaleString()} added
+                              <span className="text-amber-800 text-[11px] font-medium font-mono">
+                                +₦{s.vatAdded.toLocaleString()}
                               </span>
                             )}
                           </td>
@@ -2118,7 +2151,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                                     {s.combinedScore.toFixed(1)}
                                   </span>
                                   <span className="block text-[9px] text-purple-700">
-                                    T:{s.technicalScore} | F:{s.financialScore?.toFixed(1)}
+                                    T:{s.technicalScore} · F:{s.financialScore?.toFixed(1)}
                                   </span>
                                 </div>
                               ) : (
@@ -2126,29 +2159,29 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                               )}
                             </td>
                           )}
-                          <td className="px-3 py-2.5 text-center font-mono">
+                          <td className="px-3 py-2.5 text-center font-mono text-xs">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              className={`font-semibold ${
                                 s.itemsQuotedCount === s.itemsRequiredCount
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-red-100 text-red-800'
+                                  ? 'text-emerald-700'
+                                  : 'text-rose-700 font-bold'
                               }`}
                             >
-                              {s.itemsQuotedCount} / {s.itemsRequiredCount} ({Math.round(s.completenessPct)}%)
+                              {s.itemsQuotedCount}/{s.itemsRequiredCount} ({Math.round(s.completenessPct)}%)
                             </span>
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             {s.isResponsive ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span className="inline-flex items-center gap-1 text-emerald-700 font-bold text-[11px]">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                 Responsive
                               </span>
                             ) : (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold text-[10px]"
+                                className="inline-flex items-center gap-1 text-rose-700 font-bold text-[11px]"
                                 title={s.blocks.join(' | ')}
                               >
-                                <XCircle className="w-3 h-3 text-red-600" />
+                                <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                                 Disqualified
                               </span>
                             )}
@@ -2157,7 +2190,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                             <button
                               type="button"
                               onClick={() => setInspectingQuote(s.quotation)}
-                              className="no-print inline-flex items-center gap-1 px-2 py-1 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 text-[11px] font-semibold transition-colors"
+                              className="no-print inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 hover:text-stone-950 text-[11px] font-semibold transition-colors"
                               title="Inspect original quotation slip"
                             >
                               <Eye className="w-3 h-3 text-stone-600" />
@@ -2353,10 +2386,10 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           </td>
                           <td className="px-3 py-2 text-center">
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border ${
                                 w.severity === 'abnormally_low'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-amber-100 text-amber-800'
+                                  ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                  : 'bg-amber-50 text-amber-800 border-amber-200'
                               }`}
                             >
                               {w.severity === 'abnormally_low' ? `-${w.variancePct}% Low` : `+${w.variancePct}% High`}
@@ -2425,7 +2458,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                         <td className="px-3 py-2.5 font-medium text-stone-800">{m.name}</td>
                         <td className="px-3 py-2.5 text-stone-600">{m.department}</td>
                         <td className="px-3 py-2.5 text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             Confirmed
                           </span>
@@ -2548,7 +2581,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
             {/* Modal Controls */}
             <div className="flex items-center justify-between border-b pb-4">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono font-bold text-[10px] uppercase">
+                <span className="px-2.5 py-0.5 rounded-sm bg-amber-50 text-amber-900 font-mono font-bold text-[10px] uppercase border border-amber-200">
                   Audited Tender Submission Document
                 </span>
                 <span className="text-xs text-stone-500 font-mono">Ref: {inspectingQuote.quoteRef}</span>
@@ -2557,7 +2590,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   Print Slip
@@ -2565,7 +2598,8 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 <button
                   type="button"
                   onClick={() => setInspectingQuote(null)}
-                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm"
+                  className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm transition-colors"
+                  aria-label="Close modal"
                 >
                   ×
                 </button>
@@ -2855,7 +2889,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
             {/* Modal Top Bar */}
             <div className="no-print flex items-center justify-between border-b pb-4">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-mono font-bold text-[11px] uppercase flex items-center gap-1.5">
+                <span className="px-2.5 py-0.5 rounded-sm bg-emerald-50 text-emerald-900 font-mono font-bold text-[11px] uppercase flex items-center gap-1.5 border border-emerald-200">
                   <Award className="w-3.5 h-3.5 text-emerald-700" />
                   Statutory Contract Award Dossier
                 </span>
@@ -2873,7 +2907,8 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAwardLetterModal(false)}
-                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm"
+                  className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm transition-colors"
+                  aria-label="Close modal"
                 >
                   ×
                 </button>
@@ -3030,8 +3065,8 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
             {/* Modal Controls */}
             <div className="no-print flex items-center justify-between border-b pb-4">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 font-mono font-bold text-[11px] uppercase flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-blue-700" />
+                <span className="px-2.5 py-0.5 rounded-sm bg-stone-100 text-stone-900 font-mono font-bold text-[11px] uppercase flex items-center gap-1.5 border border-stone-300">
+                  <Mail className="w-3.5 h-3.5 text-amber-600" />
                   Statutory Debriefing & Regret Notice
                 </span>
                 <span className="text-xs text-stone-500 font-mono">PPA 2007 Sec 54</span>
@@ -3040,7 +3075,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-colors"
                 >
                   <Printer className="w-3.5 h-3.5 text-amber-400" />
                   Print Notice
@@ -3048,7 +3083,8 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowDebriefModal(false)}
-                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm"
+                  className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm transition-colors"
+                  aria-label="Close modal"
                 >
                   ×
                 </button>
