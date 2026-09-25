@@ -26,6 +26,18 @@ import {
   ShieldCheck,
   History,
   FileCheck,
+  Eye,
+  SlidersHorizontal,
+  BarChart3,
+  Users,
+  Upload,
+  Layers,
+  FileDown,
+  HelpCircle,
+  Mail,
+  FileSignature,
+  CheckSquare,
+  FileBadge,
 } from 'lucide-react';
 import {
   RequisitionItem,
@@ -35,13 +47,22 @@ import {
   CurrencyCode,
   ContractProject,
   SavedBidEvaluation,
+  EvaluationCommitteeMember,
+  EvaluatedSupplier,
 } from '../types';
-import { formatCurrency } from '../utils/cpaMath';
+import { formatCurrency, formatFullCurrency } from '../utils/cpaMath';
 import {
   WORKED_EXAMPLE_ITEMS,
   WORKED_EXAMPLE_QUOTATIONS,
+  SOLAR_EXAMPLE_ITEMS,
+  SOLAR_EXAMPLE_QUOTATIONS,
+  HIGHWAY_EXAMPLE_ITEMS,
+  HIGHWAY_EXAMPLE_QUOTATIONS,
+  DEFAULT_COMMITTEE_MEMBERS,
+  STATUTORY_ELIGIBILITY_CRITERIA,
   evaluateBids,
 } from '../utils/bidEvaluationEngine';
+import { exportBidEvaluationToCsv } from '../utils/csvExporter';
 import { AfriProcureLogo } from './AfriProcureLogo';
 
 interface BidEvaluationDeskProps {
@@ -67,19 +88,45 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
   const [reviewedBy, setReviewedBy] = useState('Dr. (Mrs.) B. N. Okafor, Director of Procurement');
   const [evaluationDate, setEvaluationDate] = useState('2026-08-25');
 
+  // Tenders Evaluation Committee
+  const [committeeMembers, setCommitteeMembers] = useState<EvaluationCommitteeMember[]>(DEFAULT_COMMITTEE_MEMBERS);
+
+  // Policy & Sensitivity Options state
+  const [vatExempt, setVatExempt] = useState<boolean>(false);
+  const [missingItemPolicy, setMissingItemPolicy] = useState<'disqualify' | 'load_highest_price'>('disqualify');
+  const [albThresholdPct, setAlbThresholdPct] = useState<number>(25);
+  const [evaluationMethod, setEvaluationMethod] = useState<'lerb' | 'qcbs'>('lerb');
+  const [technicalWeight, setTechnicalWeight] = useState<number>(70);
+  const [financialWeight, setFinancialWeight] = useState<number>(30);
+  const [applyArithmeticCorrections, setApplyArithmeticCorrections] = useState<boolean>(true);
+
   // Requisition items state
   const [reqItems, setReqItems] = useState<RequisitionItem[]>(WORKED_EXAMPLE_ITEMS);
 
   // Supplier quotations state
   const [quotations, setQuotations] = useState<SupplierQuotation[]>(WORKED_EXAMPLE_QUOTATIONS);
 
+  // Active Preset tag
+  const [activePreset, setActivePreset] = useState<'marine_ppe' | 'solar_minigrid' | 'highway_pavement'>('marine_ppe');
+
   // Saved evaluations in local storage
   const [savedEvaluations, setSavedEvaluations] = useState<SavedBidEvaluation[]>([]);
   const [showSavedModal, setShowSavedModal] = useState(false);
 
+  // Document Inspection Modal State
+  const [inspectingQuote, setInspectingQuote] = useState<SupplierQuotation | null>(null);
+
+  // Official Letter Suite Modals
+  const [showAwardLetterModal, setShowAwardLetterModal] = useState<boolean>(false);
+  const [showDebriefModal, setShowDebriefModal] = useState<boolean>(false);
+  const [selectedDebriefId, setSelectedDebriefId] = useState<string>('');
+
+  // Batch Import Modal State
+  const [showBatchImportModal, setShowBatchImportModal] = useState<boolean>(false);
+  const [batchImportText, setBatchImportText] = useState<string>('');
+
   // Editing modals / accordion states
   const [expandedQuoteId, setExpandedQuoteId] = useState<string | null>('quote-1');
-  const [selectedBidderForModal, setSelectedBidderForModal] = useState<SupplierQuotation | null>(null);
 
   // Editable narrative report
   const [customNarrative, setCustomNarrative] = useState<string>('');
@@ -102,8 +149,27 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
 
   // Compute evaluation results
   const evaluationResult: BidEvaluationResult = useMemo(() => {
-    return evaluateBids(reqItems, quotations, currency);
-  }, [reqItems, quotations, currency]);
+    return evaluateBids(reqItems, quotations, currency, {
+      vatExempt,
+      missingItemPolicy,
+      albThresholdPct,
+      evaluationMethod,
+      technicalWeight,
+      financialWeight,
+      applyArithmeticCorrections,
+    });
+  }, [
+    reqItems,
+    quotations,
+    currency,
+    vatExempt,
+    missingItemPolicy,
+    albThresholdPct,
+    evaluationMethod,
+    technicalWeight,
+    financialWeight,
+    applyArithmeticCorrections,
+  ]);
 
   // Sync narrative if custom is empty
   useEffect(() => {
@@ -114,6 +180,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
 
   // Handle Load Worked Example
   const handleLoadWorkedExample = () => {
+    setActivePreset('marine_ppe');
     setOrgName('Delta Marine Services Ltd');
     setProcurementTitle('Supply of personal protective equipment (PPE)');
     setRequisitionRef('DMS/RFQ/2026/0118');
@@ -121,10 +188,132 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
     setPreparedBy('Engr. K. O. Ekanem, Procurement Lead');
     setReviewedBy('Dr. (Mrs.) B. N. Okafor, Director of Procurement');
     setEvaluationDate('2026-08-25');
+    setCommitteeMembers(DEFAULT_COMMITTEE_MEMBERS);
     setReqItems(WORKED_EXAMPLE_ITEMS);
     setQuotations(WORKED_EXAMPLE_QUOTATIONS);
     setCustomNarrative('');
     setActiveStep('report');
+  };
+
+  // Preset Selector Handler
+  const handleSelectPreset = (presetKey: 'marine_ppe' | 'solar_minigrid' | 'highway_pavement') => {
+    setActivePreset(presetKey);
+    if (presetKey === 'marine_ppe') {
+      handleLoadWorkedExample();
+    } else if (presetKey === 'solar_minigrid') {
+      setOrgName('Federal Rural Electrification Agency (REA)');
+      setProcurementTitle('Turnkey Supply of 20kW Hybrid Solar Inverter, Panels & LiFePO4 Energy Storage');
+      setRequisitionRef('REA/HQ/SOL/2026/041');
+      setReportRef('BER-REA-2026-084');
+      setPreparedBy('Engr. T. S. Alabi, Head of Solar Engineering');
+      setReviewedBy('Dr. (Engr.) H. M. Bello, Director of Renewable Energy');
+      setEvaluationDate('2026-08-25');
+      setCommitteeMembers([
+        { id: 'cm-s1', name: 'Dr. (Engr.) H. M. Bello', role: 'Committee Chairperson', department: 'Renewable & Off-Grid Electrification', signedDate: '2026-08-25' },
+        { id: 'cm-s2', name: 'Engr. T. S. Alabi', role: 'Procurement Secretary', department: 'Procurement & Logistics Directorate', signedDate: '2026-08-25' },
+        { id: 'cm-s3', name: 'Engr. Y. K. Mohammed', role: 'Power Systems Specialist', department: 'Engineering Technical Review', signedDate: '2026-08-25' },
+        { id: 'cm-s4', name: 'Mr. C. E. Obi (FCA)', role: 'Treasury Analyst', department: 'Finance & Accounts', signedDate: '2026-08-25' },
+        { id: 'cm-s5', name: 'Barr. Halima S. Garba', role: 'Legal Directorate / Due Process Observer', department: 'Legal Services Unit', signedDate: '2026-08-25' },
+      ]);
+      setReqItems(SOLAR_EXAMPLE_ITEMS);
+      setQuotations(SOLAR_EXAMPLE_QUOTATIONS);
+      setCustomNarrative('');
+      setActiveStep('report');
+    } else if (presetKey === 'highway_pavement') {
+      setOrgName('Federal Ministry of Works & Infrastructure');
+      setProcurementTitle('Procurement of 60/70 Penetration Grade Bitumen & Asphalt Materials for Trunk A Pavement');
+      setRequisitionRef('FMW/FED/ASPH/2026/089');
+      setReportRef('BER-FMW-2026-019');
+      setPreparedBy('Engr. V. K. Osagie, Chief Resident Engineer');
+      setReviewedBy('Engr. (Mrs.) O. A. Babalola, Director of Highways & Materials');
+      setEvaluationDate('2026-08-25');
+      setCommitteeMembers([
+        { id: 'cm-h1', name: 'Engr. (Mrs.) O. A. Babalola', role: 'Committee Chairperson', department: 'Federal Highways Directorate', signedDate: '2026-08-25' },
+        { id: 'cm-h2', name: 'Engr. V. K. Osagie', role: 'Procurement Secretary', department: 'Procurement & Materials Directorate', signedDate: '2026-08-25' },
+        { id: 'cm-h3', name: 'Engr. B. N. Audu', role: 'Materials Quality Engineer', department: 'Materials Testing & Quality Control Laboratory', signedDate: '2026-08-25' },
+        { id: 'cm-h4', name: 'Alhaji I. K. Zaria', role: 'Internal Audit Representative', department: 'Finance & Accounts Directorate', signedDate: '2026-08-25' },
+        { id: 'cm-h5', name: 'Barr. M. C. Eze', role: 'Civil Society / Due Process Monitor', department: 'Legal Directorate', signedDate: '2026-08-25' },
+      ]);
+      setReqItems(HIGHWAY_EXAMPLE_ITEMS);
+      setQuotations(HIGHWAY_EXAMPLE_QUOTATIONS);
+      setCustomNarrative('');
+      setActiveStep('report');
+    }
+  };
+
+  // Process Batch Import of Requisition Items
+  const handleProcessBatchImport = () => {
+    if (!batchImportText.trim()) return;
+    const lines = batchImportText.trim().split('\n');
+    const newItems: RequisitionItem[] = [];
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+
+      let parts: string[] = [];
+      if (trimmed.includes('\t')) {
+        parts = trimmed.split('\t');
+      } else if (trimmed.includes('|')) {
+        parts = trimmed.split('|');
+      } else if (trimmed.includes(',')) {
+        parts = trimmed.split(',');
+      } else {
+        parts = [trimmed];
+      }
+
+      const cleanParts = parts.map((p) => p.trim());
+      const name = cleanParts[0] || `Requisition Item #${index + 1}`;
+      const specification = cleanParts[1] || 'Standard industrial specification';
+      const unit = cleanParts[2] || 'pcs';
+      const quantity = cleanParts[3] ? parseInt(cleanParts[3].replace(/[^0-9]/g, ''), 10) || 100 : 100;
+      const budgetBenchmarkPrice = cleanParts[4] ? parseFloat(cleanParts[4].replace(/[^0-9.]/g, '')) || 10000 : 10000;
+
+      newItems.push({
+        id: `batch-${Date.now()}-${index}`,
+        name,
+        specification,
+        unit,
+        quantity,
+        budgetBenchmarkPrice,
+      });
+    });
+
+    if (newItems.length > 0) {
+      setReqItems(newItems);
+      // Synchronize quotations to include the new items
+      setQuotations((prevQuotes) =>
+        prevQuotes.map((q) => {
+          const matchedItems = newItems.map((r, i) => {
+            const existing = q.items.find((it) => it.name.toLowerCase() === r.name.toLowerCase());
+            return (
+              existing || {
+                id: `qline-${q.id}-${Date.now()}-${i}`,
+                name: r.name,
+                specification: r.specification,
+                unit: r.unit,
+                quantity: r.quantity,
+                unitPrice: r.budgetBenchmarkPrice || 10000,
+                amount: (r.budgetBenchmarkPrice || 10000) * r.quantity,
+                matchReqItemId: r.id,
+                sourcePageNote: `Batch imported item ${i + 1}`,
+              }
+            );
+          });
+          const newSubtotal = matchedItems.reduce((acc, it) => acc + (it.amount || 0), 0);
+          const vatRate = q.vat.rate || 7.5;
+          const newTotal = q.vat.isInclusive ? newSubtotal : newSubtotal + (newSubtotal * vatRate) / 100;
+          return {
+            ...q,
+            items: matchedItems,
+            subtotal: newSubtotal,
+            total: newTotal,
+          };
+        })
+      );
+      setShowBatchImportModal(false);
+      setBatchImportText('');
+    }
   };
 
   // Handle Saving to Local Storage
@@ -138,6 +327,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
       reportRef,
       preparedBy,
       reviewedBy,
+      committeeMembers,
       items: reqItems,
       quotations,
       winnerName: evaluationResult.winner?.quotation.supplierName,
@@ -162,11 +352,101 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
     setReportRef(saved.reportRef);
     setPreparedBy(saved.preparedBy || '');
     setReviewedBy(saved.reviewedBy || '');
+    if (saved.committeeMembers && saved.committeeMembers.length > 0) {
+      setCommitteeMembers(saved.committeeMembers);
+    }
     setReqItems(saved.items);
     setQuotations(saved.quotations);
     setCustomNarrative('');
     setShowSavedModal(false);
     setActiveStep('report');
+  };
+
+  // CSV Export Handler
+  const handleExportCsv = () => {
+    exportBidEvaluationToCsv(
+      {
+        orgName,
+        procurementTitle,
+        requisitionRef,
+        reportRef,
+        evaluationDate,
+        currency,
+      },
+      reqItems,
+      evaluationResult
+    );
+  };
+
+  // Download Blank RFQ Quotation Schedule for Suppliers
+  const handleDownloadBlankRfqCsv = () => {
+    const headers = [
+      'Item No.',
+      'Item Description',
+      'Technical Specification',
+      'Unit of Measurement',
+      'Quantity Required',
+      `Bidder Unit Price (${currency})`,
+      `Bidder Line Total (${currency})`,
+      'Specification Compliance (Yes/No)',
+      'Brand / Model Quoted',
+    ];
+
+    const rows = reqItems.map((item, idx) => [
+      `"${idx + 1}"`,
+      `"${item.name.replace(/"/g, '""')}"`,
+      `"${item.specification.replace(/"/g, '""')}"`,
+      `"${item.unit}"`,
+      `"${item.quantity}"`,
+      '""',
+      '""',
+      '"Yes"',
+      '""',
+    ]);
+
+    const csvContent = [
+      `# ${orgName.toUpperCase()} - REQUEST FOR QUOTATIONS (RFQ)`,
+      `# Procurement Title: ${procurementTitle}`,
+      `# RFQ Reference: ${requisitionRef}`,
+      `# Statutory Submission Currency: ${currency}`,
+      `# Instructions: Enter your firm unit rate in column F and compute line total in column G.`,
+      headers.join(','),
+      ...rows.map((r) => r.join(',')),
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Blank_RFQ_Schedule_${requisitionRef.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Committee Member helpers
+  const handleAddCommitteeMember = () => {
+    const newMember: EvaluationCommitteeMember = {
+      id: 'cm-' + Date.now(),
+      name: 'New Committee Member',
+      role: 'Technical Evaluator',
+      department: 'Procurement Board',
+      signedDate: evaluationDate,
+    };
+    setCommitteeMembers([...committeeMembers, newMember]);
+  };
+
+  const handleUpdateCommitteeMember = (id: string, field: keyof EvaluationCommitteeMember, val: string) => {
+    setCommitteeMembers(committeeMembers.map((m) => (m.id === id ? { ...m, [field]: val } : m)));
+  };
+
+  const handleRemoveCommitteeMember = (id: string) => {
+    if (committeeMembers.length <= 1) {
+      alert('At least one committee member is required for evaluation sign-off.');
+      return;
+    }
+    setCommitteeMembers(committeeMembers.filter((m) => m.id !== id));
   };
 
   // Add new requisition item
@@ -369,20 +649,65 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 .join('')
         }
 
-        <h2>4. STATUTORY CERTIFICATION & SIGN-OFF</h2>
-        <table style="border: none; margin-top: 30px;">
-          <tr style="border: none;">
-            <td style="border: none; width: 50%;">
-              <p>Prepared by:</p>
-              <br/><br/>
-              <p>___________________________________<br/><strong>${preparedBy}</strong><br/>Procurement Directorate</p>
-            </td>
-            <td style="border: none; width: 50%;">
-              <p>Reviewed & Approved by:</p>
-              <br/><br/>
-              <p>___________________________________<br/><strong>${reviewedBy}</strong><br/>Chairperson, Ministerial / Tenders Board</p>
-            </td>
-          </tr>
+        <h2>3B. ABNORMALLY LOW BID (ALB) & PRICE REALISM AUDIT (PPA 2007 SECTION 34)</h2>
+        ${
+          evaluationResult.albWarnings.length === 0
+            ? '<p>✓ All quoted unit prices fall within standard commercial price variance thresholds. No abnormally low tenders detected.</p>'
+            : `<table>
+                <thead>
+                  <tr style="background-color: #fef2f2;">
+                    <th>Supplier</th>
+                    <th>Line Item</th>
+                    <th>Quoted Unit Price (${currency})</th>
+                    <th>Budget Benchmark (${currency})</th>
+                    <th>Variance (%)</th>
+                    <th>Audit Finding</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${evaluationResult.albWarnings
+                    .map(
+                      (w) => `
+                    <tr>
+                      <td>${w.supplierName}</td>
+                      <td>${w.itemName}</td>
+                      <td class="num">${w.unitPrice.toLocaleString()}</td>
+                      <td class="num">${w.benchmarkPrice.toLocaleString()}</td>
+                      <td class="num">${w.variancePct}%</td>
+                      <td>${w.reason}</td>
+                    </tr>
+                  `
+                    )
+                    .join('')}
+                </tbody>
+              </table>`
+        }
+
+        <h2>4. TENDERS EVALUATION COMMITTEE STATUTORY SIGN-OFF</h2>
+        <p>In accordance with Section 21 and Section 22 of the Public Procurement Act (PPA 2007), the undersigned evaluation committee members have verified the mathematical accuracy, legal credentials, technical responsiveness, and anti-collusion clearance of all bids evaluated herein:</p>
+        <table>
+          <thead>
+            <tr style="background-color: #f1f5f9;">
+              <th>Committee Role</th>
+              <th>Member Name</th>
+              <th>Directorate / Entity</th>
+              <th>Official Signature & Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${committeeMembers
+              .map(
+                (m) => `
+              <tr>
+                <td><strong>${m.role}</strong></td>
+                <td>${m.name}</td>
+                <td>${m.department}</td>
+                <td style="height: 35px; vertical-align: bottom;">____________________ (${m.signedDate || evaluationDate})</td>
+              </tr>
+            `
+              )
+              .join('')}
+          </tbody>
         </table>
       </body>
       </html>
@@ -516,6 +841,83 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
       {/* ========================================================================= */}
       {activeStep === 'setup' && (
         <div className="space-y-6">
+          {/* Preset Selector Card */}
+          <div className="bg-stone-900 text-stone-100 rounded-2xl p-5 border border-stone-800 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold text-[10px] border border-amber-400/30 uppercase">
+                  <Layers className="w-3 h-3" />
+                  Pre-Configured Procurement Scenarios
+                </div>
+                <h3 className="text-sm font-bold text-white mt-1">
+                  Load Standard Institutional Tender Presets (1-Click)
+                </h3>
+                <p className="text-xs text-stone-400">
+                  Switch between infrastructure domains with realistic specifications, competitive quotations, and statutory credentials.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('marine_ppe')}
+                className={`p-3.5 rounded-xl border text-left transition-all ${
+                  activePreset === 'marine_ppe'
+                    ? 'bg-amber-500/10 border-amber-500 text-white shadow-xs'
+                    : 'bg-stone-800/80 border-stone-700/80 text-stone-300 hover:border-stone-500 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs">🛡️ Marine Safety & PPE</span>
+                  {activePreset === 'marine_ppe' && (
+                    <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">ACTIVE</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-stone-400 mt-1">Delta Marine Services Ltd</div>
+                <div className="text-[10px] text-amber-400 font-mono mt-2">5 Requisition Items • 3 Bidders</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('solar_minigrid')}
+                className={`p-3.5 rounded-xl border text-left transition-all ${
+                  activePreset === 'solar_minigrid'
+                    ? 'bg-amber-500/10 border-amber-500 text-white shadow-xs'
+                    : 'bg-stone-800/80 border-stone-700/80 text-stone-300 hover:border-stone-500 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs">☀️ Solar Mini-Grid & Storage</span>
+                  {activePreset === 'solar_minigrid' && (
+                    <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">ACTIVE</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-stone-400 mt-1">Rural Electrification Agency (REA)</div>
+                <div className="text-[10px] text-amber-400 font-mono mt-2">5 Requisition Items • 3 Bidders</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('highway_pavement')}
+                className={`p-3.5 rounded-xl border text-left transition-all ${
+                  activePreset === 'highway_pavement'
+                    ? 'bg-amber-500/10 border-amber-500 text-white shadow-xs'
+                    : 'bg-stone-800/80 border-stone-700/80 text-stone-300 hover:border-stone-500 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs">🛣️ Highway Bitumen & Asphalt</span>
+                  {activePreset === 'highway_pavement' && (
+                    <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">ACTIVE</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-stone-400 mt-1">Federal Ministry of Works</div>
+                <div className="text-[10px] text-amber-400 font-mono mt-2">4 Requisition Items • 3 Bidders</div>
+              </button>
+            </div>
+          </div>
+
           {/* Institutional Setup Card */}
           <div className="bg-white rounded-2xl p-6 border border-stone-200 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
@@ -586,26 +988,140 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
             </div>
           </div>
 
-          {/* Requisition Items Builder */}
+          {/* Tenders Evaluation Committee Card */}
           <div className="bg-white rounded-2xl p-6 border border-stone-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-amber-600" />
-                  Mandatory Requisition Items & Technical Specifications
+                  <Users className="w-4 h-4 text-amber-600" />
+                  Statutory Tenders Evaluation Committee (PPA 2007 Sections 21 & 22)
                 </h2>
                 <p className="text-xs text-stone-500">
-                  Every bidder must price all items listed here to be considered responsive under PPA 2007 Section 32.
+                  Registered committee officers responsible for scoring, evaluation narrative approval, and integrity verification.
                 </p>
               </div>
 
               <button
-                onClick={handleAddReqItem}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors shrink-0"
+                type="button"
+                onClick={handleAddCommitteeMember}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add Item
+                Add Member
               </button>
+            </div>
+
+            <div className="overflow-x-auto border border-stone-200 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th className="px-3 py-2.5">Official Role / Designation</th>
+                    <th className="px-3 py-2.5">Officer Name</th>
+                    <th className="px-3 py-2.5">Department / Directorate</th>
+                    <th className="px-3 py-2.5 text-center w-28">Sign-off Date</th>
+                    <th className="px-3 py-2.5 w-12 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {committeeMembers.map((member) => (
+                    <tr key={member.id} className="hover:bg-stone-50/50">
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={member.role}
+                          onChange={(e) => handleUpdateCommitteeMember(member.id, 'role', e.target.value)}
+                          className="w-full bg-white border border-stone-200 rounded px-2 py-1 text-xs font-bold text-stone-900"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={member.name}
+                          onChange={(e) => handleUpdateCommitteeMember(member.id, 'name', e.target.value)}
+                          className="w-full bg-white border border-stone-200 rounded px-2 py-1 text-xs font-medium text-stone-800"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={member.department}
+                          onChange={(e) => handleUpdateCommitteeMember(member.id, 'department', e.target.value)}
+                          className="w-full bg-white border border-stone-200 rounded px-2 py-1 text-xs text-stone-600"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="date"
+                          value={member.signedDate || evaluationDate}
+                          onChange={(e) => handleUpdateCommitteeMember(member.id, 'signedDate', e.target.value)}
+                          className="w-full bg-white border border-stone-200 rounded px-2 py-1 text-xs text-stone-700 font-mono text-center"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCommitteeMember(member.id)}
+                          className="text-stone-400 hover:text-red-600 p-1 transition-colors"
+                          title="Remove Member"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Requisition Items Builder */}
+          <div className="bg-white rounded-2xl p-6 border border-stone-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    Mandatory Requisition Items & Technical Specifications
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-mono text-xs font-bold">
+                    {reqItems.length} items
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Official Budget Benchmark Total: <strong className="text-stone-900 font-mono">{formatCurrency(evaluationResult.budgetBenchmarkTotal, currency)}</strong>. Every bidder must price all items listed here to be considered responsive under PPA 2007 Section 32.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleDownloadBlankRfqCsv}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-300 transition-colors"
+                  title="Download formatted blank Quotation Schedule to issue to vendors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+                  Blank RFQ Form (.CSV)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBatchImportModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs border border-stone-300 transition-colors"
+                  title="Batch paste multiple items from Excel or text"
+                >
+                  <Upload className="w-3.5 h-3.5 text-stone-600" />
+                  Batch Import Items
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleAddReqItem}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs transition-colors shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Item
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto border border-stone-200 rounded-xl">
@@ -616,8 +1132,9 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                     <th className="px-3 py-2.5">Item Description</th>
                     <th className="px-3 py-2.5">Detailed Specification</th>
                     <th className="px-3 py-2.5 w-24">Unit</th>
-                    <th className="px-3 py-2.5 w-24">Required Qty</th>
+                    <th className="px-3 py-2.5 w-24 text-right">Required Qty</th>
                     <th className="px-3 py-2.5 w-32 text-right">Budget Benchmark</th>
+                    <th className="px-3 py-2.5 w-32 text-right">Line Benchmark</th>
                     <th className="px-3 py-2.5 w-12 text-center">Action</th>
                   </tr>
                 </thead>
@@ -665,8 +1182,12 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           className="w-full bg-white border border-stone-200 rounded px-2 py-1 text-xs font-mono text-stone-700 text-right"
                         />
                       </td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-stone-800">
+                        {formatCurrency((item.budgetBenchmarkPrice || 0) * item.quantity, currency)}
+                      </td>
                       <td className="px-3 py-2 text-center">
                         <button
+                          type="button"
                           onClick={() => handleRemoveReqItem(item.id)}
                           className="text-stone-400 hover:text-red-600 p-1 transition-colors"
                           title="Delete Item"
@@ -680,8 +1201,13 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
               </table>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between items-center pt-2">
+              <div className="text-xs text-stone-500 font-mono">
+                Total Estimated Expenditure: <span className="font-bold text-stone-900">{formatCurrency(evaluationResult.budgetBenchmarkTotal, currency)}</span>
+              </div>
+
               <button
+                type="button"
                 onClick={() => setActiveStep('quotations')}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-md transition-colors"
               >
@@ -771,14 +1297,27 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInspectingQuote(q);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold border border-stone-300 transition-colors shadow-2xs"
+                        title="Inspect original quotation slip / proforma invoice"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-stone-600" />
+                        <span className="hidden sm:inline">Inspect Slip</span>
+                      </button>
+
                       <div className="text-right">
                         <div className="text-xs text-stone-400 font-medium">Evaluated Landed Cost:</div>
                         <div className="text-base font-black font-mono text-stone-900">
                           {formatCurrency(evalSupplier?.evaluatedCost || q.total, currency)}
                         </div>
                         <div className="text-[10px] text-stone-500">
-                          {q.vat.isInclusive ? 'VAT 7.5% Included' : '+ 7.5% VAT harmonized'}
+                          {vatExempt ? 'VAT-Exempt evaluated' : q.vat.isInclusive ? 'VAT 7.5% Included' : '+ 7.5% VAT harmonized'}
                         </div>
                       </div>
 
@@ -989,6 +1528,100 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                             <option value="exclusive">VAT 7.5% Exclusive (+ 7.5% harmonized)</option>
                             <option value="inclusive">VAT 7.5% Inclusive (included in figures)</option>
                           </select>
+                        </div>
+                      </div>
+
+                      {/* Statutory Preliminary Eligibility Checklist (Pass / Fail) */}
+                      <div className="bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-2">
+                          <div>
+                            <span className="font-bold text-xs text-stone-900 flex items-center gap-1.5">
+                              <FileBadge className="w-3.5 h-3.5 text-amber-600" />
+                              Stage 1: Statutory Preliminary Eligibility Examination (PPA 2007 Sec 16(6))
+                            </span>
+                            <span className="text-[11px] text-stone-500">
+                              Mandatory statutory criteria. Any uncertified mandatory certificate results in preliminary disqualification.
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const allPassed: Record<string, boolean> = {};
+                                STATUTORY_ELIGIBILITY_CRITERIA.forEach((crit) => {
+                                  allPassed[crit.key] = true;
+                                });
+                                setQuotations(
+                                  quotations.map((item) => (item.id === q.id ? { ...item, eligibility: allPassed } : item))
+                                );
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300 transition-colors"
+                            >
+                              ✓ Mark All Compliant
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                          {STATUTORY_ELIGIBILITY_CRITERIA.map((crit) => {
+                            const isChecked = q.eligibility ? (q.eligibility as any)[crit.key] !== false : true;
+                            return (
+                              <label
+                                key={crit.key}
+                                className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                                  isChecked
+                                    ? 'bg-white border-stone-200 hover:border-emerald-300'
+                                    : 'bg-red-50 border-red-300 text-red-900'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const currentElig = q.eligibility || {};
+                                    const updatedElig = { ...currentElig, [crit.key]: e.target.checked };
+                                    setQuotations(
+                                      quotations.map((item) => (item.id === q.id ? { ...item, eligibility: updatedElig } : item))
+                                    );
+                                  }}
+                                  className="mt-0.5 rounded text-amber-600 focus:ring-amber-500"
+                                />
+                                <div className="space-y-0.5 text-[11px]">
+                                  <div className="font-bold flex items-center gap-1">
+                                    <span>{crit.name}</span>
+                                    {crit.isMandatory && <span className="text-red-500 font-bold">*</span>}
+                                  </div>
+                                  <div className="text-[10px] text-stone-500">{crit.authority}</div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        {/* Technical Score Input (for QCBS evaluation) */}
+                        <div className="pt-2 border-t border-stone-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-stone-700">Technical Responsiveness Score (QCBS):</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={q.technicalScore ?? 85}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setQuotations(
+                                  quotations.map((item) => (item.id === q.id ? { ...item, technicalScore: val } : item))
+                                );
+                              }}
+                              className="w-16 bg-white border border-stone-300 rounded px-2 py-0.5 font-mono font-bold text-stone-900 text-center"
+                            />
+                            <span className="text-stone-500 font-mono text-[11px]">/ 100 points (Pass threshold: 70)</span>
+                          </div>
+
+                          <div className="text-[11px] text-stone-500">
+                            Evaluated under BPP Standard Evaluation Manual & PPA 2007
+                          </div>
                         </div>
                       </div>
 
@@ -1212,6 +1845,185 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
               </div>
             )}
 
+            {/* Policy & Statutory Sensitivity Simulator (Interactive Controls) */}
+            <div className="no-print bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-amber-600" />
+                  <span className="font-bold text-xs text-stone-900 uppercase tracking-wide">
+                    Statutory Evaluation Policy & Sensitivity Simulator
+                  </span>
+                </div>
+                <span className="text-[11px] text-stone-500 hidden sm:inline">PPA 2007 Statutory Parameters</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {/* Evaluation Methodology */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
+                  <div className="font-bold text-stone-700 flex items-center justify-between">
+                    <span>Evaluation Method:</span>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${evaluationMethod === 'qcbs' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {evaluationMethod === 'qcbs' ? 'QCBS (70/30)' : 'LERB (PPA 32)'}
+                    </span>
+                  </div>
+                  <select
+                    value={evaluationMethod}
+                    onChange={(e) => setEvaluationMethod(e.target.value as any)}
+                    className="w-full bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs text-stone-900 font-semibold"
+                  >
+                    <option value="lerb">Lowest Evaluated Responsive Bidder (PPA Goods/Works)</option>
+                    <option value="qcbs">QCBS: Quality & Cost Scoring (70% Tech / 30% Fin)</option>
+                  </select>
+                </div>
+
+                {/* VAT Exemption */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
+                  <div className="font-bold text-stone-700 flex items-center justify-between">
+                    <span>VAT Treatment Policy:</span>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${vatExempt ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {vatExempt ? 'VAT-Exempt' : 'Harmonized 7.5%'}
+                    </span>
+                  </div>
+                  <select
+                    value={vatExempt ? 'exempt' : 'harmonized'}
+                    onChange={(e) => setVatExempt(e.target.value === 'exempt')}
+                    className="w-full bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs text-stone-900 font-semibold"
+                  >
+                    <option value="harmonized">Harmonize 7.5% Landed Cost (Statutory PPA)</option>
+                    <option value="exempt">0% VAT-Exempt (Donor/Multilateral Projects)</option>
+                  </select>
+                </div>
+
+                {/* Missing Item Treatment */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
+                  <div className="font-bold text-stone-700 flex items-center justify-between">
+                    <span>Missing Items Policy:</span>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${missingItemPolicy === 'disqualify' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {missingItemPolicy === 'disqualify' ? 'Strict Disqualification' : 'PPA 32(3) Load Price'}
+                    </span>
+                  </div>
+                  <select
+                    value={missingItemPolicy}
+                    onChange={(e) => setMissingItemPolicy(e.target.value as any)}
+                    className="w-full bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs text-stone-900 font-semibold"
+                  >
+                    <option value="disqualify">Strict Disqualification (Non-Responsive)</option>
+                    <option value="load_highest_price">Load Competing Highest Unit Price (Sec 32(3))</option>
+                  </select>
+                </div>
+
+                {/* Abnormally Low Bid Sensitivity & Arithmetic Corrections */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
+                  <div className="font-bold text-stone-700 flex items-center justify-between">
+                    <span>ALB Threshold & Arithmetic:</span>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={applyArithmeticCorrections}
+                        onChange={(e) => setApplyArithmeticCorrections(e.target.checked)}
+                        className="rounded text-amber-600 focus:ring-amber-500 w-3 h-3"
+                      />
+                      <span className="text-[10px] font-bold text-stone-600">PPA 31 Correct</span>
+                    </label>
+                  </div>
+                  <select
+                    value={albThresholdPct}
+                    onChange={(e) => setAlbThresholdPct(Number(e.target.value))}
+                    className="w-full bg-stone-50 border border-stone-300 rounded px-2.5 py-1.5 text-xs text-stone-900 font-semibold"
+                  >
+                    <option value={15}>ALB: -15% below Budget Benchmark (Strict)</option>
+                    <option value={20}>ALB: -20% below Budget Benchmark</option>
+                    <option value={25}>ALB: -25% below Budget Benchmark (Standard)</option>
+                    <option value={30}>ALB: -30% below Budget Benchmark (Permissive)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Cost Comparison Chart */}
+            <div className="space-y-3 bg-white border border-stone-200 rounded-2xl p-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-amber-600" />
+                  <h3 className="text-sm font-bold text-stone-900">
+                    Visual Tender Landed Cost Comparison vs Budget Benchmark
+                  </h3>
+                </div>
+                <div className="text-xs text-stone-500 font-mono">
+                  Official Budget Benchmark: <strong className="text-stone-900 font-bold">{formatCurrency(evaluationResult.budgetBenchmarkTotal, currency)}</strong>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {evaluationResult.suppliers.map((s) => {
+                  const isWinner = evaluationResult.winner?.quotation.id === s.quotation.id;
+                  const maxCost = Math.max(
+                    evaluationResult.budgetBenchmarkTotal,
+                    ...evaluationResult.suppliers.map((sup) => sup.evaluatedCost)
+                  );
+                  const widthPct = maxCost > 0 ? Math.min(100, Math.max(15, (s.evaluatedCost / maxCost) * 100)) : 50;
+
+                  return (
+                    <div key={s.quotation.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center font-mono text-[10px] font-bold ${
+                              isWinner
+                                ? 'bg-emerald-600 text-white'
+                                : s.isResponsive
+                                ? 'bg-stone-800 text-stone-100'
+                                : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {s.rank}
+                          </span>
+                          <span className="font-bold text-stone-900">{s.quotation.supplierName}</span>
+                          {isWinner && (
+                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              ★ RECOMMENDED WINNER
+                            </span>
+                          )}
+                          {!s.isResponsive && (
+                            <span className="px-1.5 py-0.2 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                              Disqualified
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-mono font-bold text-stone-900">
+                          {formatCurrency(s.evaluatedCost, currency)}
+                        </div>
+                      </div>
+
+                      <div className="w-full bg-stone-100 h-3 rounded-full overflow-hidden flex items-center">
+                        <div
+                          className={`h-full transition-all duration-500 rounded-full ${
+                            isWinner
+                              ? 'bg-emerald-600'
+                              : s.isResponsive
+                              ? 'bg-blue-600'
+                              : 'bg-red-400'
+                          }`}
+                          style={{ width: `${widthPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Benchmark Indicator Footnote */}
+                <div className="pt-2 border-t border-dashed border-stone-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500 font-mono">
+                  <span>Planned Budget: {formatCurrency(evaluationResult.budgetBenchmarkTotal, currency)}</span>
+                  <span>Median Tender: {formatCurrency(evaluationResult.medianEvaluatedCost, currency)}</span>
+                  {evaluationResult.winner && (
+                    <span className="text-emerald-700 font-bold">
+                      Winner Margin: {evaluationResult.savingsPct.toFixed(1)}% savings vs highest tender
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Executive Comparison Table */}
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
@@ -1229,8 +2041,12 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                       <th className="px-3 py-2.5 text-right">Quoted Subtotal ({currency})</th>
                       <th className="px-3 py-2.5 text-center">VAT Treatment</th>
                       <th className="px-3 py-2.5 text-right">Evaluated Landed Cost ({currency})</th>
+                      {evaluationMethod === 'qcbs' && (
+                        <th className="px-3 py-2.5 text-center">QCBS Combined Score</th>
+                      )}
                       <th className="px-3 py-2.5 text-center">Scope Quoted</th>
                       <th className="px-3 py-2.5 text-center">Responsiveness</th>
+                      <th className="px-3 py-2.5 text-center">Document</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -1266,10 +2082,22 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-right font-mono font-medium text-stone-800">
-                            {formatCurrency(s.baseCost, currency)}
+                            <div>{formatCurrency(s.baseCost, currency)}</div>
+                            {s.lineSumDifference > 0 && applyArithmeticCorrections && (
+                              <div
+                                className="text-[9px] text-amber-700 font-bold"
+                                title={s.arithmeticNotes.join('; ')}
+                              >
+                                PPA 31: ₦{s.lineSumDifference.toLocaleString()} corrected
+                              </div>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-center">
-                            {s.quotation.vat.isInclusive ? (
+                            {vatExempt ? (
+                              <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[10px] font-medium">
+                                0% Exempted
+                              </span>
+                            ) : s.quotation.vat.isInclusive ? (
                               <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[10px] font-medium">
                                 7.5% Included
                               </span>
@@ -1282,6 +2110,22 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           <td className="px-3 py-2.5 text-right font-mono font-bold text-stone-950 text-sm">
                             {formatCurrency(s.evaluatedCost, currency)}
                           </td>
+                          {evaluationMethod === 'qcbs' && (
+                            <td className="px-3 py-2.5 text-center font-mono">
+                              {s.combinedScore !== undefined ? (
+                                <div>
+                                  <span className="font-black text-purple-900 text-xs">
+                                    {s.combinedScore.toFixed(1)}
+                                  </span>
+                                  <span className="block text-[9px] text-purple-700">
+                                    T:{s.technicalScore} | F:{s.financialScore?.toFixed(1)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-stone-400">-</span>
+                              )}
+                            </td>
+                          )}
                           <td className="px-3 py-2.5 text-center font-mono">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1295,7 +2139,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             {s.isResponsive ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 Responsive
                               </span>
@@ -1308,6 +2152,17 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                                 Disqualified
                               </span>
                             )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setInspectingQuote(s.quotation)}
+                              className="no-print inline-flex items-center gap-1 px-2 py-1 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 text-[11px] font-semibold transition-colors"
+                              title="Inspect original quotation slip"
+                            >
+                              <Eye className="w-3 h-3 text-stone-600" />
+                              Slip
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1453,6 +2308,69 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
               )}
             </div>
 
+            {/* 3b. Abnormally Low Bid (ALB) & Price Realism Alert Matrix */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  3b. Price Realism & Abnormally Low Bid (ALB) Detection Matrix
+                </h3>
+                <span className="text-[11px] text-stone-500 font-mono">
+                  PPA 2007 Section 34 & FIDIC Clause 13.8 Standard
+                </span>
+              </div>
+
+              {evaluationResult.albWarnings.length === 0 ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="text-xs text-emerald-800">
+                    <strong>Price Realism Clearance:</strong> All submitted unit rates fall within standard commercial market variance tolerances (-{albThresholdPct}% to +35% of official MDA benchmark). No predatory pricing or substandard risk detected.
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-amber-200 rounded-xl bg-amber-50/30">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-amber-100/70 border-b border-amber-200 text-amber-900 font-bold uppercase text-[10px]">
+                      <tr>
+                        <th className="px-3 py-2.5">Bidder</th>
+                        <th className="px-3 py-2.5">Quoted Line Item</th>
+                        <th className="px-3 py-2.5 text-right">Quoted Rate ({currency})</th>
+                        <th className="px-3 py-2.5 text-right">Budget Benchmark ({currency})</th>
+                        <th className="px-3 py-2.5 text-center">Variance</th>
+                        <th className="px-3 py-2.5">Statutory Audit Assessment</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-100 bg-white">
+                      {evaluationResult.albWarnings.map((w, wIdx) => (
+                        <tr key={wIdx} className="hover:bg-amber-50/40">
+                          <td className="px-3 py-2 font-bold text-stone-900">{w.supplierName}</td>
+                          <td className="px-3 py-2 font-medium text-stone-800">{w.itemName}</td>
+                          <td className="px-3 py-2 text-right font-mono font-bold text-stone-900">
+                            {formatCurrency(w.unitPrice, currency)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-stone-600">
+                            {formatCurrency(w.benchmarkPrice, currency)}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                w.severity === 'abnormally_low'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {w.severity === 'abnormally_low' ? `-${w.variancePct}% Low` : `+${w.variancePct}% High`}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-stone-700 text-[11px]">{w.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {/* Statutory Evaluation Narrative */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -1462,6 +2380,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 </h3>
 
                 <button
+                  type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(customNarrative || evaluationResult.narrative);
                     setCopiedNotification(true);
@@ -1481,36 +2400,77 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
               />
             </div>
 
-            {/* Statutory Sign-off Block */}
-            <div className="border-t border-stone-200 pt-6 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
-              <div className="space-y-4">
-                <div className="font-bold text-stone-700 uppercase tracking-wide text-[10px]">
-                  Evaluation Prepared By:
-                </div>
-                <div className="pt-8 border-b border-stone-300 w-4/5"></div>
-                <div>
-                  <div className="font-bold text-stone-900">{preparedBy}</div>
-                  <div className="text-stone-500 text-[11px]">Procurement Lead / Forensic Cost Engineer</div>
-                </div>
+            {/* Statutory Sign-off Attendance Register */}
+            <div className="space-y-4 border-t border-stone-200 pt-6">
+              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                <Users className="w-4 h-4 text-amber-600" />
+                5. Tenders Evaluation Committee Sign-Off & Attendance Register (PPA 2007)
+              </h3>
+
+              <div className="overflow-x-auto border border-stone-200 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-stone-50 border-b border-stone-200 text-stone-700 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="px-3 py-2.5">Committee Designation</th>
+                      <th className="px-3 py-2.5">Official Name</th>
+                      <th className="px-3 py-2.5">Directorate / Authority</th>
+                      <th className="px-3 py-2.5 text-center">Status</th>
+                      <th className="px-3 py-2.5 text-right">Signature & Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100 bg-white">
+                    {committeeMembers.map((m) => (
+                      <tr key={m.id} className="hover:bg-stone-50/50">
+                        <td className="px-3 py-2.5 font-bold text-stone-900">{m.role}</td>
+                        <td className="px-3 py-2.5 font-medium text-stone-800">{m.name}</td>
+                        <td className="px-3 py-2.5 text-stone-600">{m.department}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Confirmed
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono text-[11px] text-stone-600">
+                          <span className="italic font-serif">Verified Digital Seal</span> • {m.signedDate || evaluationDate}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="space-y-4">
-                <div className="font-bold text-stone-700 uppercase tracking-wide text-[10px]">
-                  Evaluation Reviewed & Approved By:
+              {/* Executive Dual Endorsement */}
+              <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
+                <div className="space-y-4">
+                  <div className="font-bold text-stone-700 uppercase tracking-wide text-[10px]">
+                    Evaluation Prepared By:
+                  </div>
+                  <div className="pt-8 border-b border-stone-300 w-4/5"></div>
+                  <div>
+                    <div className="font-bold text-stone-900">{preparedBy}</div>
+                    <div className="text-stone-500 text-[11px]">Procurement Lead / Forensic Cost Engineer</div>
+                  </div>
                 </div>
-                <div className="pt-8 border-b border-stone-300 w-4/5"></div>
-                <div>
-                  <div className="font-bold text-stone-900">{reviewedBy}</div>
-                  <div className="text-stone-500 text-[11px]">Chairperson, Tenders Evaluation Board</div>
+
+                <div className="space-y-4">
+                  <div className="font-bold text-stone-700 uppercase tracking-wide text-[10px]">
+                    Evaluation Reviewed & Approved By:
+                  </div>
+                  <div className="pt-8 border-b border-stone-300 w-4/5"></div>
+                  <div>
+                    <div className="font-bold text-stone-900">{reviewedBy}</div>
+                    <div className="text-stone-500 text-[11px]">Chairperson, Tenders Evaluation Board</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Action Bar (Print, Word, Back) */}
+          {/* Action Bar (Print, Word, CSV, Back) */}
           <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setActiveStep('quotations')}
                 className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs transition-colors"
               >
@@ -1519,7 +2479,48 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {evaluationResult.winner && (
+                <button
+                  type="button"
+                  onClick={() => setShowAwardLetterModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-xs transition-colors"
+                  title="Generate official Notification of Provisional Award Letter for winning contractor"
+                >
+                  <Award className="w-4 h-4 text-stone-950" />
+                  Award Letter (LPO)
+                </button>
+              )}
+
               <button
+                type="button"
+                onClick={() => {
+                  const nonWinners = evaluationResult.suppliers.filter(
+                    (s) => s.quotation.id !== evaluationResult.winner?.quotation.id
+                  );
+                  if (nonWinners.length > 0 && !selectedDebriefId) {
+                    setSelectedDebriefId(nonWinners[0].quotation.id);
+                  }
+                  setShowDebriefModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs border border-stone-300 transition-colors"
+                title="Generate formal debriefing and regret letters for unsuccessful bidders"
+              >
+                <Mail className="w-4 h-4 text-stone-700" />
+                Debriefing Notice
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold text-xs border border-emerald-300 transition-colors"
+                title="Export item-by-item comparative matrix as spreadsheet CSV"
+              >
+                <FileDown className="w-4 h-4 text-emerald-700" />
+                Export Matrix (.CSV)
+              </button>
+
+              <button
+                type="button"
                 onClick={handleExportWord}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs border border-blue-200 transition-colors"
               >
@@ -1528,11 +2529,256 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={handlePrintReport}
                 className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-md transition-colors"
               >
                 <Printer className="w-4 h-4 text-amber-400" />
                 Print / Save PDF Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quotation Document Slip Inspector Modal */}
+      {inspectingQuote && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-stone-200">
+            {/* Modal Controls */}
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-mono font-bold text-[10px] uppercase">
+                  Audited Tender Submission Document
+                </span>
+                <span className="text-xs text-stone-500 font-mono">Ref: {inspectingQuote.quoteRef}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Slip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectingQuote(null)}
+                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Official Supplier Letterhead */}
+            <div className="border-b-2 border-stone-800 pb-5 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-black text-stone-900 tracking-tight uppercase">
+                    {inspectingQuote.supplierName}
+                  </h2>
+                  <p className="text-xs text-stone-600 max-w-md">{inspectingQuote.address}</p>
+                  <div className="text-[11px] text-stone-500 font-mono mt-1 space-x-3">
+                    <span>Tel: {inspectingQuote.phone}</span>
+                    <span>Email: {inspectingQuote.email}</span>
+                  </div>
+                </div>
+
+                <div className="text-right text-xs space-y-1 bg-stone-50 p-3 rounded-xl border border-stone-200 shrink-0">
+                  <div>CAC Reg: <strong className="font-mono text-stone-900">{inspectingQuote.rcNumber || 'NOT STATED'}</strong></div>
+                  <div>FIRS TIN: <strong className="font-mono text-stone-900">{inspectingQuote.tin || 'NOT STATED'}</strong></div>
+                  <div>Settlement Bank: <strong className="text-stone-900">{inspectingQuote.bank.bankName}</strong></div>
+                  <div>Account No: <strong className="font-mono text-stone-900">{inspectingQuote.bank.accountNumber}</strong></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Document Header Details */}
+            <div className="text-center py-2 bg-stone-50 rounded-xl border border-stone-200 space-y-0.5">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-amber-800">
+                Official Commercial Quotation & Proforma Invoice
+              </div>
+              <h3 className="text-base font-black text-stone-900">
+                {procurementTitle}
+              </h3>
+              <div className="text-xs text-stone-600 font-medium">
+                Buyer / Procuring Entity: <strong>{orgName}</strong> | Date: <strong>{inspectingQuote.quoteDate}</strong> | Validity: <strong>{inspectingQuote.validity}</strong>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="overflow-x-auto border border-stone-200 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-stone-100 border-b border-stone-200 text-stone-700 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th className="px-3 py-2.5">#</th>
+                    <th className="px-3 py-2.5">Item Description</th>
+                    <th className="px-3 py-2.5">Quoted Technical Specification</th>
+                    <th className="px-3 py-2.5 text-center">Unit</th>
+                    <th className="px-3 py-2.5 text-right">Qty</th>
+                    <th className="px-3 py-2.5 text-right">Unit Price ({inspectingQuote.currency})</th>
+                    <th className="px-3 py-2.5 text-right">Line Total ({inspectingQuote.currency})</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {inspectingQuote.items.map((it, idx) => (
+                    <tr key={it.id} className="hover:bg-stone-50/50">
+                      <td className="px-3 py-2 font-mono text-stone-400">{idx + 1}</td>
+                      <td className="px-3 py-2 font-bold text-stone-900">{it.name}</td>
+                      <td className="px-3 py-2 text-stone-600 text-[11px]">
+                        {it.specification}
+                        {it.sourcePageNote && (
+                          <span className="block text-[10px] text-stone-400 italic">[{it.sourcePageNote}]</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center text-stone-700">{it.unit}</td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold">{it.quantity}</td>
+                      <td className="px-3 py-2 text-right font-mono text-stone-800">
+                        {formatCurrency(it.unitPrice, inspectingQuote.currency)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-stone-950">
+                        {formatCurrency(it.amount, inspectingQuote.currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-stone-50 font-semibold border-t-2 border-stone-300 text-stone-900">
+                  <tr>
+                    <td colSpan={6} className="px-3 py-2 text-right">
+                      Quoted Subtotal:
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono font-bold">
+                      {formatCurrency(inspectingQuote.subtotal, inspectingQuote.currency)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={6} className="px-3 py-1.5 text-right text-stone-600 text-xs font-normal">
+                      Value Added Tax (7.5% VAT):
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono text-stone-600">
+                      {inspectingQuote.vat.isInclusive
+                        ? 'Included in Quoted Price'
+                        : `+ ${formatCurrency((inspectingQuote.subtotal * (inspectingQuote.vat.rate || 7.5)) / 100, inspectingQuote.currency)}`}
+                    </td>
+                  </tr>
+                  <tr className="bg-stone-100 font-bold text-stone-950 text-sm">
+                    <td colSpan={6} className="px-3 py-2.5 text-right">
+                      Total Commercial Quotation:
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-base font-black text-stone-950">
+                      {formatCurrency(inspectingQuote.total, inspectingQuote.currency)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Commercial Terms & Digital Seal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+              <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-1">
+                <div className="font-bold text-stone-800 uppercase text-[10px]">Commercial & Warranty Terms:</div>
+                <div>• Delivery Period: <strong>{inspectingQuote.deliveryPeriod}</strong></div>
+                <div>• Payment Terms: <strong>{inspectingQuote.paymentTerms}</strong></div>
+                <div>• Warranty Coverage: <strong>{inspectingQuote.warranty}</strong></div>
+                {inspectingQuote.notes.length > 0 && (
+                  <div className="pt-1 text-[11px] text-stone-500">
+                    Notes: {inspectingQuote.notes.join('; ')}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/80 flex flex-col justify-between">
+                <div>
+                  <div className="font-bold text-emerald-950 uppercase text-[10px]">Authorized Executive Signatory:</div>
+                  <div className="text-sm font-bold text-stone-900 mt-1">{inspectingQuote.signatory}</div>
+                  <div className="text-[11px] text-emerald-800 font-mono">Company Seal & Digital Verification Cleared</div>
+                </div>
+                <div className="mt-4 pt-2 border-t border-emerald-200 text-[10px] text-stone-500 font-mono flex items-center justify-between">
+                  <span>Audit Hash: SHA-256 Verified</span>
+                  <span>PPA 2007 Compliant Tender</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setInspectingQuote(null)}
+                className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs"
+              >
+                Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Import Requisition Items Modal */}
+      {showBatchImportModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-base text-stone-900 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-amber-600" />
+                Batch Import Requisition Items
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowBatchImportModal(false)}
+                className="text-stone-400 hover:text-stone-700 text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-3 flex-1 overflow-y-auto text-xs">
+              <p className="text-stone-600">
+                Paste rows from Excel, Word, or text files. Separate columns with <strong>Tab</strong>, <strong>Pipe (|)</strong>, or <strong>Comma (,)</strong>.
+              </p>
+
+              <div className="bg-stone-50 p-2.5 rounded-lg border border-stone-200 font-mono text-[11px] text-stone-700">
+                <strong>Format:</strong> Description | Technical Specification | Unit | Quantity | Budget Benchmark
+              </div>
+
+              <textarea
+                rows={8}
+                value={batchImportText}
+                onChange={(e) => setBatchImportText(e.target.value)}
+                placeholder={`Safety Helmet | EN397 standard white with chin strap | pcs | 120 | 7000\nHeavy Duty Work Gloves | Level 5 cut resistant nitrile palm | pairs | 200 | 6500\nSafety Spectacles | Polycarbonate anti-scratch UV400 | pcs | 120 | 4000`}
+                className="w-full bg-stone-50 border border-stone-300 rounded-xl p-3 font-mono text-xs text-stone-900 focus:outline-hidden focus:border-amber-500"
+              />
+
+              <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setBatchImportText(
+                      `Solar PV Panels 450W | Monocrystalline Tier 1 | pcs | 48 | 115000\nHybrid Inverter 15kVA | Pure sine wave three phase MPPT | units | 2 | 2850000\nLiFePO4 Battery 10kWh | 51.2V 200Ah Rack mount | units | 4 | 3400000\nPV DC Cable 6mm² | 500m drum double insulated | drums | 3 | 320000`
+                    )
+                  }
+                  className="text-xs text-amber-700 hover:text-amber-800 font-semibold"
+                >
+                  Paste Sample Data
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t pt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBatchImportModal(false)}
+                className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleProcessBatchImport}
+                className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs"
+              >
+                Parse & Populate Items
               </button>
             </div>
           </div>
@@ -1596,6 +2842,379 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                 className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Provisional Letter of Award Modal */}
+      {showAwardLetterModal && evaluationResult.winner && (
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[92vh] overflow-y-auto border border-stone-200">
+            {/* Modal Top Bar */}
+            <div className="no-print flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-mono font-bold text-[11px] uppercase flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-emerald-700" />
+                  Statutory Contract Award Dossier
+                </span>
+                <span className="text-xs text-stone-500 font-mono">PPA 2007 Sec 33</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-xs transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  Print Letter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAwardLetterModal(false)}
+                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Letterhead */}
+            <div className="border-b-2 border-stone-900 pb-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AfriProcureLogo size="lg" variant="badge" />
+                <div>
+                  <h2 className="text-lg font-black text-stone-950 uppercase tracking-tight">{orgName}</h2>
+                  <p className="text-xs text-stone-600 font-semibold uppercase">
+                    DIRECTORATE OF PROCUREMENT • TENDERS BOARD SECRETARIAT
+                  </p>
+                  <p className="text-[11px] text-stone-500">
+                    Federal Republic of Nigeria • Statutory Public Procurement Act 2007
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right text-xs space-y-0.5 shrink-0 font-mono">
+                <div>Ref: <strong className="text-stone-900">AWD/{reportRef}</strong></div>
+                <div>Date: <strong className="text-stone-900">{evaluationDate}</strong></div>
+                <div>Standstill Period: <strong className="text-amber-800">14 Calendar Days</strong></div>
+              </div>
+            </div>
+
+            {/* Recipient Address */}
+            <div className="space-y-1 text-xs text-stone-800">
+              <div className="font-bold text-stone-900 text-sm">{evaluationResult.winner.quotation.supplierName}</div>
+              <div>{evaluationResult.winner.quotation.address}</div>
+              <div className="font-mono text-stone-600">
+                CAC RC: {evaluationResult.winner.quotation.rcNumber} | FIRS TIN: {evaluationResult.winner.quotation.tin}
+              </div>
+              <div className="font-medium pt-1">
+                <strong>Attention:</strong> {evaluationResult.winner.quotation.signatory} (Authorized Representative)
+              </div>
+            </div>
+
+            {/* Subject */}
+            <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                OFFICIAL NOTIFICATION OF INTENTION TO AWARD / PROVISIONAL ACCEPTANCE
+              </div>
+              <h3 className="text-sm font-black text-stone-950 uppercase">
+                CONTRACT AWARD FOR: {procurementTitle}
+              </h3>
+              <div className="text-xs text-stone-600 font-mono">
+                Tender Ref: {requisitionRef} | Evaluation Report Ref: {reportRef}
+              </div>
+            </div>
+
+            {/* Body Text */}
+            <div className="space-y-3 text-xs text-stone-800 leading-relaxed">
+              <p>
+                Dear Sir/Madam,
+              </p>
+              <p>
+                We are pleased to inform you that following the formal Bid Evaluation exercise concluded on <strong>{evaluationDate}</strong> by the Tenders Evaluation Committee in accordance with Section 32 and Section 33 of the Public Procurement Act (PPA 2007), your company has emerged as the <strong>Lowest Evaluated Responsive Bidder</strong> for the execution of the above-referenced contract.
+              </p>
+              <p>
+                The contract has been provisionally awarded to your firm in the total evaluated landed amount of:
+              </p>
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 text-center space-y-1">
+                <div className="text-xs font-bold uppercase text-emerald-900 tracking-wide">
+                  Total Awarded Contract Sum ({currency})
+                </div>
+                <div className="text-2xl font-black font-mono text-emerald-950">
+                  {formatFullCurrency(evaluationResult.winner.evaluatedCost, currency)}
+                </div>
+                <div className="text-[11px] text-emerald-800 font-medium">
+                  {evaluationResult.winner.quotation.vat.isInclusive
+                    ? '(Inclusive of Statutory 7.5% Value Added Tax and all Landed Logistics)'
+                    : '(Harmonized Landed Valuation under PPA 2007)'}
+                </div>
+              </div>
+
+              {/* Award Terms & Conditions */}
+              <div className="space-y-2 pt-2">
+                <div className="font-bold text-stone-900 text-xs uppercase tracking-wide">
+                  Commercial Terms & Execution Schedule:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-stone-50 p-3 rounded-xl border border-stone-200 font-mono text-[11px]">
+                  <div>• Scope of Delivery: <strong>{evaluationResult.winner.itemsQuotedCount} line items complete</strong></div>
+                  <div>• Delivery Period: <strong>{evaluationResult.winner.quotation.deliveryPeriod}</strong></div>
+                  <div>• Payment Terms: <strong>{evaluationResult.winner.quotation.paymentTerms}</strong></div>
+                  <div>• Warranty Period: <strong>{evaluationResult.winner.quotation.warranty}</strong></div>
+                  <div>• Settlement Bank: <strong>{evaluationResult.winner.quotation.bank.bankName}</strong></div>
+                  <div>• Bank Account No: <strong>{evaluationResult.winner.quotation.bank.accountNumber}</strong></div>
+                </div>
+              </div>
+
+              {/* Statutory Standstill Notice */}
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 space-y-1 text-amber-950">
+                <div className="font-bold flex items-center gap-1.5 text-xs">
+                  <AlertTriangle className="w-4 h-4 text-amber-700" />
+                  Mandatory Statutory Standstill Period (14 Calendar Days)
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Pursuant to national procurement transparency standards, this notification does not constitute a final binding contract until the expiration of the mandatory <strong>14-day Standstill Period</strong> ending on <strong>{new Date(Date.now() + 14 * 86400000).toLocaleDateString()}</strong>. This period allows participating bidders to request statutory debriefing or file administrative petitions under PPA 2007 Section 54.
+                </p>
+              </div>
+
+              {/* Conditions Precedent */}
+              <div className="space-y-1 pt-1 text-[11px]">
+                <div className="font-bold text-stone-900">Conditions Precedent to Formal Contract Signing:</div>
+                <ol className="list-decimal pl-5 space-y-0.5 text-stone-700">
+                  <li>Written Acceptance of this Provisional Award within seven (7) working days of receipt.</li>
+                  <li>Submission of a 10% Performance Security from a reputable commercial bank or insurance firm.</li>
+                  <li>Verification of current Tax Clearance Certificate (TCC) and execution of the statutory Integrity Pact.</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Signature Blocks */}
+            <div className="pt-6 border-t border-stone-200 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
+              <div className="space-y-3">
+                <div className="font-bold text-stone-700 uppercase text-[10px]">Issued By:</div>
+                <div className="pt-8 border-b border-stone-300 w-4/5"></div>
+                <div>
+                  <div className="font-bold text-stone-900">{preparedBy}</div>
+                  <div className="text-stone-500 text-[11px]">Procurement Lead / Head of Tenders Board</div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="font-bold text-stone-700 uppercase text-[10px]">Approved By (Accounting Officer):</div>
+                <div className="pt-8 border-b border-stone-300 w-4/5"></div>
+                <div>
+                  <div className="font-bold text-stone-900">{reviewedBy}</div>
+                  <div className="text-stone-500 text-[11px]">Director-General / Permanent Secretary</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAwardLetterModal(false)}
+                className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs"
+              >
+                Close Award Letter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Debriefing & Regret Notice Modal */}
+      {showDebriefModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[92vh] overflow-y-auto border border-stone-200">
+            {/* Modal Controls */}
+            <div className="no-print flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 font-mono font-bold text-[11px] uppercase flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-blue-700" />
+                  Statutory Debriefing & Regret Notice
+                </span>
+                <span className="text-xs text-stone-500 font-mono">PPA 2007 Sec 54</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  Print Notice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDebriefModal(false)}
+                  className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-sm"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Select Unsuccessful Bidder */}
+            <div className="no-print bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1.5">
+              <label className="block text-xs font-bold text-stone-700">
+                Select Addressee (Unsuccessful Participating Tenderer):
+              </label>
+              <select
+                value={selectedDebriefId}
+                onChange={(e) => setSelectedDebriefId(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-xs font-bold text-stone-900"
+              >
+                {evaluationResult.suppliers
+                  .filter((s) => s.quotation.id !== evaluationResult.winner?.quotation.id)
+                  .map((s) => (
+                    <option key={s.quotation.id} value={s.quotation.id}>
+                      {s.quotation.supplierName} — Rank {s.rank} ({s.isResponsive ? 'Responsive' : 'Disqualified'}) — Landed: ₦{s.evaluatedCost.toLocaleString()}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Letterhead */}
+            {(() => {
+              const targetSup =
+                evaluationResult.suppliers.find((s) => s.quotation.id === selectedDebriefId) ||
+                evaluationResult.suppliers.find((s) => s.quotation.id !== evaluationResult.winner?.quotation.id);
+
+              if (!targetSup) {
+                return <div className="text-center py-6 text-stone-500">No unsuccessful bidders to debrief.</div>;
+              }
+
+              const winner = evaluationResult.winner;
+              const priceDiff = winner ? targetSup.evaluatedCost - winner.evaluatedCost : 0;
+
+              return (
+                <div className="space-y-5">
+                  <div className="border-b-2 border-stone-900 pb-4 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-black text-stone-950 uppercase">{orgName}</h2>
+                      <p className="text-[11px] text-stone-600 font-semibold uppercase">
+                        TENDERS BOARD SECRETARIAT • DEBRIEFING OFFICE
+                      </p>
+                    </div>
+                    <div className="text-right text-xs font-mono">
+                      <div>Ref: <strong>DBR/{reportRef}/{targetSup.quotation.rcNumber || 'TND'}</strong></div>
+                      <div>Date: <strong>{evaluationDate}</strong></div>
+                    </div>
+                  </div>
+
+                  {/* Addressee */}
+                  <div className="text-xs text-stone-800 space-y-0.5">
+                    <div className="font-bold text-stone-900">{targetSup.quotation.supplierName}</div>
+                    <div>{targetSup.quotation.address}</div>
+                    <div className="font-mono text-stone-600">CAC RC: {targetSup.quotation.rcNumber}</div>
+                    <div className="pt-1">
+                      <strong>Attention:</strong> {targetSup.quotation.signatory}
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="bg-stone-50 p-3 rounded-xl border border-stone-200">
+                    <div className="text-[10px] font-bold uppercase text-stone-500 font-mono">
+                      STATUTORY NOTIFICATION OF OUTCOME OF BID EVALUATION
+                    </div>
+                    <div className="font-bold text-xs text-stone-900">
+                      TENDER FOR: {procurementTitle} (Ref: {requisitionRef})
+                    </div>
+                  </div>
+
+                  {/* Body */}
+                  <div className="space-y-3 text-xs text-stone-800 leading-relaxed">
+                    <p>
+                      Dear Sir/Madam,
+                    </p>
+                    <p>
+                      Thank you for participating in the tender exercise for the above-referenced procurement. We wish to inform you that the evaluation of all submitted bids has been concluded in accordance with the provisions of the Public Procurement Act (PPA 2007).
+                    </p>
+                    <p>
+                      We regret to inform you that on this occasion, your quotation was not recommended for contract award. In compliance with statutory procurement transparency guidelines, please find below the debriefing assessment of your submission:
+                    </p>
+
+                    {/* Comparative Finding Box */}
+                    <div className="bg-stone-50 rounded-xl p-4 border border-stone-200 space-y-2 font-mono text-[11px]">
+                      <div className="flex justify-between border-b pb-1.5">
+                        <span className="text-stone-600">Your Evaluated Tender Rank:</span>
+                        <strong className="text-stone-900">Rank {targetSup.rank} of {evaluationResult.totalBidsCount} bidders</strong>
+                      </div>
+                      <div className="flex justify-between border-b pb-1.5">
+                        <span className="text-stone-600">Your Evaluated Landed Cost:</span>
+                        <strong className="text-stone-900">{formatCurrency(targetSup.evaluatedCost, currency)}</strong>
+                      </div>
+                      {winner && (
+                        <>
+                          <div className="flex justify-between border-b pb-1.5">
+                            <span className="text-stone-600">Recommended Winning Contractor:</span>
+                            <strong className="text-emerald-800">{winner.quotation.supplierName}</strong>
+                          </div>
+                          <div className="flex justify-between border-b pb-1.5">
+                            <span className="text-stone-600">Winning Evaluated Landed Cost:</span>
+                            <strong className="text-emerald-800">{formatCurrency(winner.evaluatedCost, currency)}</strong>
+                          </div>
+                          {priceDiff > 0 && (
+                            <div className="flex justify-between border-b pb-1.5">
+                              <span className="text-stone-600">Variance vs Winning Tender:</span>
+                              <strong className="text-amber-800">+{formatCurrency(priceDiff, currency)} higher</strong>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <div className="flex justify-between pt-1">
+                        <span className="text-stone-600">Responsiveness Verdict:</span>
+                        <strong className={targetSup.isResponsive ? 'text-emerald-700' : 'text-red-700'}>
+                          {targetSup.isResponsive ? 'Fully Responsive (Higher Landed Cost)' : 'Statutory Disqualification'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Detailed Reason Notes */}
+                    <div className="space-y-1">
+                      <div className="font-bold text-stone-900 text-xs">Specific Statutory Audit Findings:</div>
+                      {targetSup.blocks.length > 0 ? (
+                        <div className="bg-red-50 p-3 rounded-lg border border-red-200 text-red-900 space-y-1 text-[11px]">
+                          {targetSup.blocks.map((b, bIdx) => (
+                            <div key={bIdx}>• {b}</div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200 text-emerald-900 text-[11px]">
+                          • Your tender met all preliminary eligibility and technical specifications. However, the contract was recommended to the lowest evaluated responsive bidder in strict accordance with Section 32 of PPA 2007.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Standstill Notice & Rights */}
+                    <p className="text-[11px] text-stone-600 pt-2 border-t">
+                      Please be advised that in accordance with statutory regulations, a mandatory <strong>14-day Standstill Period</strong> is currently observed. Participating tenderers who have grounds to believe procurement rules were violated may file an administrative review request with the Accounting Officer within this window.
+                    </p>
+                    <p>
+                      We thank you for the time and effort invested in submitting your quotation and look forward to your participation in future tenders.
+                    </p>
+                  </div>
+
+                  {/* Sign-off */}
+                  <div className="pt-6 border-t grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <div className="pt-6 border-b border-stone-300 w-3/4"></div>
+                      <div className="font-bold text-stone-900 mt-1">{preparedBy}</div>
+                      <div className="text-stone-500 text-[11px]">Head of Procurement</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="border-t pt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDebriefModal(false)}
+                className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs"
+              >
+                Close Debriefing Notice
               </button>
             </div>
           </div>

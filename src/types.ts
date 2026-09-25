@@ -241,6 +241,44 @@ export interface TraditionalCostItem {
 // BID EVALUATION DESK (RFQ & TENDER) TYPES
 // ==========================================
 
+export interface EvaluationCommitteeMember {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  signedDate?: string;
+}
+
+export interface StatutoryEligibilityCriteria {
+  key: string;
+  name: string;
+  authority: string;
+  statutoryRef: string;
+  isMandatory: boolean;
+}
+
+export interface EvaluationOptions {
+  vatExempt?: boolean;
+  vatRate?: number;
+  missingItemPolicy?: 'disqualify' | 'load_highest_price';
+  albThresholdPct?: number; // e.g. 20%
+  evaluationMethod?: 'lerb' | 'qcbs'; // LERB: Lowest Evaluated Responsive Bidder (PPA standard), QCBS: Quality & Cost Based Selection
+  technicalWeight?: number; // e.g. 70 for 70%
+  financialWeight?: number; // e.g. 30 for 30%
+  minTechnicalScore?: number; // e.g. 70 points to pass to financial opening
+  applyArithmeticCorrections?: boolean; // PPA 2007 Section 31 arithmetic error correction
+}
+
+export interface AlbItemWarning {
+  supplierName: string;
+  itemName: string;
+  unitPrice: number;
+  benchmarkPrice: number;
+  variancePct: number;
+  severity: 'low_risk' | 'abnormally_low' | 'inflated';
+  reason: string;
+}
+
 export interface RequisitionItem {
   id: string;
   name: string;
@@ -294,6 +332,19 @@ export interface SupplierQuotation {
   total: number;
   items: QuotationLineItem[];
   notes: string[];
+  // Statutory Preliminary Criteria (Pass/Fail)
+  eligibility?: {
+    cacIncorporation?: boolean;
+    taxClearance?: boolean;
+    pencomCompliance?: boolean;
+    itfCompliance?: boolean;
+    nsitfCompliance?: boolean;
+    bppInterimRegistration?: boolean;
+    swornAffidavit?: boolean;
+    bidSecurity?: boolean;
+  };
+  // Technical Evaluation Score (0 - 100)
+  technicalScore?: number;
 }
 
 export interface EvaluatedSupplier {
@@ -304,6 +355,15 @@ export interface EvaluatedSupplier {
   vatNotes?: string;
   lineSumDiscrepancy: boolean;
   lineSumDifference: number;
+  correctedSubtotal: number;
+  correctedTotal: number;
+  arithmeticNotes: string[];
+  preliminaryPassed: boolean;
+  preliminaryFailures: string[];
+  technicalScore?: number;
+  technicalPassed?: boolean;
+  financialScore?: number;
+  combinedScore?: number;
   itemsQuotedCount: number;
   itemsRequiredCount: number;
   completenessPct: number;
@@ -314,6 +374,7 @@ export interface EvaluatedSupplier {
   validUntilDate?: string;
   validityDaysLeft?: number;
   rank: number;
+  missingItemsLoadedCost?: number;
 }
 
 export interface CollusionCheck {
@@ -332,11 +393,18 @@ export interface BidEvaluationResult {
   lowestOverallBid?: EvaluatedSupplier;
   savingsVsHighest: number;
   savingsPct: number;
+  budgetBenchmarkTotal: number;
+  medianEvaluatedCost: number;
   collusionFlags: CollusionCheck[];
+  albWarnings: AlbItemWarning[];
   totalBidsCount: number;
   responsiveBidsCount: number;
   nonResponsiveBidsCount: number;
   narrative: string;
+  evaluationMethod: 'lerb' | 'qcbs';
+  technicalWeight: number;
+  financialWeight: number;
+  standstillDays: number;
 }
 
 export interface SavedBidEvaluation {
@@ -348,6 +416,7 @@ export interface SavedBidEvaluation {
   reportRef: string;
   preparedBy: string;
   reviewedBy: string;
+  committeeMembers?: EvaluationCommitteeMember[];
   items: RequisitionItem[];
   quotations: SupplierQuotation[];
   winnerName?: string;

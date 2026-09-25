@@ -1,4 +1,4 @@
-import { ContractProject, MilestonePayment, TenderAuditResult, CurrencyCode } from '../types';
+import { ContractProject, MilestonePayment, TenderAuditResult, CurrencyCode, RequisitionItem, BidEvaluationResult } from '../types';
 import { formatCurrency, formatFullCurrency } from './cpaMath';
 
 function triggerCsvDownload(csvContent: string, fileName: string) {
@@ -168,3 +168,131 @@ export function exportTenderAuditToCsv(audit: TenderAuditResult, currency: Curre
 
   triggerCsvDownload(csvContent, `Tender_Evaluation_Report_PPA_Sec34.csv`);
 }
+
+export function exportBidEvaluationToCsv(
+  meta: {
+    orgName: string;
+    procurementTitle: string;
+    requisitionRef: string;
+    reportRef: string;
+    evaluationDate: string;
+    currency: CurrencyCode;
+  },
+  reqItems: RequisitionItem[],
+  evalResult: BidEvaluationResult
+) {
+  const bidders = evalResult.suppliers;
+
+  // Header rows
+  const bidderHeaders = bidders.map(b => `"${b.quotation.supplierName.replace(/"/g, '""')} (Unit)"`);
+  const bidderTotalHeaders = bidders.map(b => `"${b.quotation.supplierName.replace(/"/g, '""')} (Total)"`);
+
+  const headers = [
+    'Item #',
+    'Requisition Item Description',
+    'Technical Specification',
+    'Unit',
+    'Required Qty',
+    'Budget Benchmark Unit Price',
+    'Budget Benchmark Total Amount',
+    ...bidderHeaders,
+    ...bidderTotalHeaders
+  ];
+
+  const rows = reqItems.map((item, idx) => {
+    const benchUnitPrice = item.budgetBenchmarkPrice || 0;
+    const benchTotal = benchUnitPrice * item.quantity;
+
+    const unitPrices = bidders.map(b => {
+      const line = b.quotation.items.find(it => it.matchReqItemId === item.id);
+      return line ? line.unitPrice : 'N/Q';
+    });
+
+    const totalPrices = bidders.map(b => {
+      const line = b.quotation.items.find(it => it.matchReqItemId === item.id);
+      return line ? line.amount : 'N/Q';
+    });
+
+    return [
+      idx + 1,
+      `"${item.name.replace(/"/g, '""')}"`,
+      `"${item.specification.replace(/"/g, '""')}"`,
+      item.unit,
+      item.quantity,
+      benchUnitPrice,
+      benchTotal,
+      ...unitPrices,
+      ...totalPrices
+    ];
+  });
+
+  // Summary rows
+  const subtotalRow = [
+    '',
+    'QUOTED SUBTOTAL',
+    '',
+    '',
+    '',
+    '',
+    evalResult.budgetBenchmarkTotal,
+    ...bidders.map(b => ''),
+    ...bidders.map(b => b.baseCost)
+  ];
+
+  const vatRow = [
+    '',
+    'VAT TREATMENT',
+    '',
+    '',
+    '',
+    '',
+    'Statutory 7.5%',
+    ...bidders.map(b => ''),
+    ...bidders.map(b => b.quotation.vat.isInclusive ? '7.5% Included' : `+ ${b.vatAdded}`)
+  ];
+
+  const landedCostRow = [
+    '',
+    'EVALUATED LANDED COST (COMMON CURRENCY)',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ...bidders.map(b => ''),
+    ...bidders.map(b => b.evaluatedCost)
+  ];
+
+  const rankRow = [
+    '',
+    'EVALUATION RANK / STATUTORY STATUS',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ...bidders.map(b => ''),
+    ...bidders.map(b => b.isResponsive ? `Rank ${b.rank} (RESPONSIVE)` : `DISQUALIFIED (#${b.rank})`)
+  ];
+
+  const csvContent = [
+    `# AFRI-PROCURE STATUTORY BID EVALUATION MATRIX (PPA 2007 SECTIONS 32 & 33)`,
+    `# Procuring Entity: "${meta.orgName.replace(/"/g, '""')}"`,
+    `# Procurement Title: "${meta.procurementTitle.replace(/"/g, '""')}"`,
+    `# Requisition Ref: ${meta.requisitionRef}`,
+    `# Report Ref: ${meta.reportRef}`,
+    `# Evaluation Date: ${meta.evaluationDate}`,
+    `# Evaluation Currency: ${meta.currency}`,
+    `# Recommended Lowest Evaluated Responsive Bidder: "${evalResult.winner?.quotation.supplierName || 'None'}"`,
+    `# Evaluated Contract Award Sum: ${evalResult.winner ? evalResult.winner.evaluatedCost : 0}`,
+    headers.join(','),
+    ...rows.map(r => r.join(',')),
+    subtotalRow.join(','),
+    vatRow.join(','),
+    landedCostRow.join(','),
+    rankRow.join(',')
+  ].join('\n');
+
+  triggerCsvDownload(csvContent, `Bid_Evaluation_Matrix_${meta.reportRef}.csv`);
+}
+
