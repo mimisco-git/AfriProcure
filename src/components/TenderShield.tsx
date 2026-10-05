@@ -16,7 +16,7 @@ export const TenderShield: React.FC<TenderShieldProps> = ({ currency }) => {
   const [ownershipFilter, setOwnershipFilter] = useState<string>('');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
 
-  const auditResult = evaluateTenderBids(engineersEstimate, bidders);
+  const auditResult = evaluateTenderBids(engineersEstimate, bidders, currency);
 
   const updateBidder = (id: string, field: keyof TenderBidder, value: any) => {
     setBidders((prev) =>

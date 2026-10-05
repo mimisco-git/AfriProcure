@@ -1,10 +1,30 @@
-import React from 'react';
-import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, ChevronDown, Plus, Settings, Scale, ShieldCheck, FileSpreadsheet } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { ShieldAlert, Calculator, FileCheck2, TrendingUp, Layers, Printer, Landmark, Building2, Settings, Scale, ShieldCheck, FileSpreadsheet, HardHat, BadgeCheck, UsersRound, LucideIcon } from 'lucide-react';
 import { ContractProject, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/cpaMath';
 import { AfriProcureLogo } from './AfriProcureLogo';
 
-export type AppTabType = 'bed' | 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities';
+export type AppTabType = 'bed' | 'cpa' | 'ipc' | 'tender' | 'claims' | 'ppa' | 'macro' | 'cases' | 'dossier' | 'securities' | 'engineering' | 'contractors' | 'governance';
+
+/** Navigation order; the list index is shown as the tab number. */
+export const APP_TABS: { id: AppTabType; label: string; icon: LucideIcon; iconColor: string }[] = [
+  { id: 'bed', label: 'Bid Evaluation Desk (RFQ & Tender)', icon: FileSpreadsheet, iconColor: 'text-amber-600' },
+  { id: 'cpa', label: 'CPA Indexation Engine', icon: Calculator, iconColor: 'text-amber-600' },
+  { id: 'ipc', label: 'IPC Cashflow & Default Risk', icon: TrendingUp, iconColor: 'text-emerald-600' },
+  { id: 'tender', label: 'Tender Shield (ALT & Collusion)', icon: ShieldAlert, iconColor: 'text-red-600' },
+  { id: 'claims', label: 'Claims & Delayed Payment Arbitration', icon: Scale, iconColor: 'text-amber-700' },
+  { id: 'ppa', label: 'PPA 2007 & BPP Thresholds', icon: Landmark, iconColor: 'text-amber-600' },
+  { id: 'macro', label: 'Material Price Benchmarks', icon: Layers, iconColor: 'text-indigo-600' },
+  { id: 'cases', label: 'Infrastructure Case Studies', icon: FileCheck2, iconColor: 'text-cyan-700' },
+  { id: 'dossier', label: 'BPP Dossier & Treasury Voucher', icon: Building2, iconColor: 'text-violet-700' },
+  { id: 'securities', label: 'Securities, VOs & FEC Memo', icon: ShieldCheck, iconColor: 'text-emerald-600' },
+  { id: 'engineering', label: 'EoT, LDs & APG Engineering', icon: HardHat, iconColor: 'text-orange-600' },
+  { id: 'contractors', label: 'BPP Contractor Registry', icon: BadgeCheck, iconColor: 'text-sky-700' },
+  { id: 'governance', label: 'Team, Roles & Audit Trail', icon: UsersRound, iconColor: 'text-stone-700' },
+];
+
+/** Tabs that only exist in a cloud workspace */
+export const CLOUD_ONLY_TABS: AppTabType[] = ['governance'];
 
 interface HeaderProps {
   activeTab: AppTabType;
@@ -16,6 +36,10 @@ interface HeaderProps {
   portfolioProjects: ContractProject[];
   onSelectProject: (p: ContractProject) => void;
   onOpenProjectModal: () => void;
+  /** Tabs to show, in order (defaults to all) */
+  tabs?: typeof APP_TABS;
+  /** Workspace status shown in the top bar (save state, organization, account) */
+  statusSlot?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,7 +52,14 @@ export const Header: React.FC<HeaderProps> = ({
   portfolioProjects,
   onSelectProject,
   onOpenProjectModal,
+  tabs = APP_TABS,
+  statusSlot,
 }) => {
+  // Keep the active tab visible in the horizontally scrolling nav (e.g. after a reload restores it)
+  useEffect(() => {
+    document.getElementById(`tab-${activeTab}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab]);
+
   return (
     <header className="no-print bg-white border-b border-stone-200 sticky top-0 z-30 shadow-xs">
       {/* Top Institutional & Regulatory Bar */}
@@ -44,8 +75,9 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[11px]">
-          <span className="text-stone-400 hidden lg:flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-4 text-[11px]">
+          {statusSlot}
+          <span className="text-stone-400 hidden xl:flex items-center gap-1">
             Statutory Standards: <strong className="text-stone-200">PPA 2007 (Nigeria)</strong> & <strong className="text-stone-200">FIDIC Red/Pink 13.8</strong>
           </span>
 
@@ -115,136 +147,27 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1 sm:gap-1.5 mt-3 pt-2.5 border-t border-stone-100 overflow-x-auto scrollbar-none text-xs font-semibold">
-          <button
-            id="tab-bed"
-            onClick={() => setActiveTab('bed')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'bed'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <FileSpreadsheet className={`w-4 h-4 ${activeTab === 'bed' ? 'text-amber-400' : 'text-amber-600'}`} />
-            0. Bid Evaluation Desk (RFQ & Tender)
-          </button>
-
-          <button
-            id="tab-cpa"
-            onClick={() => setActiveTab('cpa')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'cpa'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <Calculator className={`w-4 h-4 ${activeTab === 'cpa' ? 'text-amber-400' : 'text-amber-600'}`} />
-            1. CPA Indexation Engine
-          </button>
-
-          <button
-            id="tab-ipc"
-            onClick={() => setActiveTab('ipc')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'ipc'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <TrendingUp className={`w-4 h-4 ${activeTab === 'ipc' ? 'text-amber-400' : 'text-emerald-600'}`} />
-            2. IPC Cashflow & Default Risk
-          </button>
-
-          <button
-            id="tab-tender"
-            onClick={() => setActiveTab('tender')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'tender'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <ShieldAlert className={`w-4 h-4 ${activeTab === 'tender' ? 'text-amber-400' : 'text-red-600'}`} />
-            3. Tender Shield (ALT & Collusion)
-          </button>
-
-          <button
-            id="tab-claims"
-            onClick={() => setActiveTab('claims')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'claims'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <Scale className={`w-4 h-4 ${activeTab === 'claims' ? 'text-amber-400' : 'text-amber-700'}`} />
-            4. Claims & Delayed Payment Arbitration
-          </button>
-
-          <button
-            id="tab-ppa"
-            onClick={() => setActiveTab('ppa')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'ppa'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <Landmark className={`w-4 h-4 ${activeTab === 'ppa' ? 'text-amber-400' : 'text-amber-600'}`} />
-            5. PPA 2007 & BPP Thresholds
-          </button>
-
-          <button
-            id="tab-macro"
-            onClick={() => setActiveTab('macro')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'macro'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <Layers className={`w-4 h-4 ${activeTab === 'macro' ? 'text-amber-400' : 'text-indigo-600'}`} />
-            6. Material Price Benchmarks
-          </button>
-
-          <button
-            id="tab-cases"
-            onClick={() => setActiveTab('cases')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'cases'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <FileCheck2 className={`w-4 h-4 ${activeTab === 'cases' ? 'text-amber-400' : 'text-cyan-700'}`} />
-            7. Infrastructure Case Studies
-          </button>
-
-          <button
-            id="tab-dossier"
-            onClick={() => setActiveTab('dossier')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'dossier'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <Building2 className={`w-4 h-4 ${activeTab === 'dossier' ? 'text-amber-400' : 'text-violet-700'}`} />
-            8. BPP Dossier & Treasury Voucher
-          </button>
-
-          <button
-            id="tab-securities"
-            onClick={() => setActiveTab('securities')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-              activeTab === 'securities'
-                ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-            }`}
-          >
-            <ShieldCheck className={`w-4 h-4 ${activeTab === 'securities' ? 'text-amber-400' : 'text-emerald-600'}`} />
-            9. Securities, VOs & FEC Memo
-          </button>
+        <nav aria-label="Modules" className="flex items-center gap-1 sm:gap-1.5 mt-3 pt-2.5 border-t border-stone-100 overflow-x-auto scrollbar-none text-xs font-semibold">
+          {tabs.map((tab, index) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                id={`tab-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-stone-900 text-amber-300 font-bold shadow-xs'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-amber-400' : tab.iconColor}`} />
+                {index}. {tab.label}
+              </button>
+            );
+          })}
         </nav>
       </div>
     </header>

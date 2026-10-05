@@ -41,8 +41,10 @@ export const ConstructionEngineeringSuite: React.FC<ConstructionEngineeringSuite
 
   // EOT / LD State
   const [delayEvents, setDelayEvents] = useState<EotDelayEvent[]>(DEFAULT_EOT_DELAY_EVENTS);
-  const [originalDurationDays, setOriginalDurationDays] = useState<number>(730); // 24 months = 730 days
-  const [actualCompletionDays, setActualCompletionDays] = useState<number>(820); // 90 days overrun
+  // Seeded from the active contract; App remounts this component (key=project.id) on contract switch
+  const contractDurationDays = Math.max(1, Math.round((project.durationMonths * 365) / 12));
+  const [originalDurationDays, setOriginalDurationDays] = useState<number>(contractDurationDays);
+  const [actualCompletionDays, setActualCompletionDays] = useState<number>(contractDurationDays + 90); // 90-day overrun scenario
   const [dailyLdRatePct, setDailyLdRatePct] = useState<number>(0.1); // 0.1% per calendar day
   const [maxLdCapPct, setMaxLdCapPct] = useState<number>(10); // 10% statutory cap
 
@@ -55,8 +57,8 @@ export const ConstructionEngineeringSuite: React.FC<ConstructionEngineeringSuite
   const [newEventNotified28Days, setNewEventNotified28Days] = useState<boolean>(true);
 
   // APG & Retention State
-  const [advancePaymentPct, setAdvancePaymentPct] = useState<number>(15); // PPA 2007 max 15%
-  const [retentionPct, setRetentionPct] = useState<number>(5); // Standard 5%
+  const [advancePaymentPct, setAdvancePaymentPct] = useState<number>(Math.round(project.advancePaymentRate * 1000) / 10); // PPA 2007 max 15%
+  const [retentionPct, setRetentionPct] = useState<number>(Math.round(project.retentionRate * 1000) / 10);
   const [recoveryStartPct, setRecoveryStartPct] = useState<number>(20); // starts after 20% progress
   const [recoveryRatePct, setRecoveryRatePct] = useState<number>(25); // 25% of interim billings
 
@@ -68,6 +70,7 @@ export const ConstructionEngineeringSuite: React.FC<ConstructionEngineeringSuite
     actualCompletionDays,
     dailyLdRatePct,
     maxLdCapPct,
+    currency,
   });
 
   // APG & Retention Calculations

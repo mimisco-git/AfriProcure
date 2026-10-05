@@ -10,6 +10,7 @@ import {
   AlbItemWarning,
   StatutoryEligibilityCriteria,
 } from '../types';
+import { formatFullCurrency, currencySymbol } from './cpaMath';
 
 export const STATUTORY_ELIGIBILITY_CRITERIA: StatutoryEligibilityCriteria[] = [
   {
@@ -696,6 +697,11 @@ export function evaluateBids(
   currency: CurrencyCode = 'NGN',
   options?: EvaluationOptions
 ): BidEvaluationResult {
+  const money = (amount: number, cur: CurrencyCode = currency) => formatFullCurrency(amount, cur);
+  // Multiplier converting a quotation's own currency into the evaluation currency
+  const fxOf = (q: SupplierQuotation) =>
+    q.currency !== currency && q.exchangeRateToNgn && q.exchangeRateToNgn > 0 ? q.exchangeRateToNgn : 1;
+
   const evaluatedSuppliers: EvaluatedSupplier[] = [];
   const collusionChecks: CollusionCheck[] = [];
   const albWarnings: AlbItemWarning[] = [];
@@ -740,9 +746,6 @@ export function evaluateBids(
     // Also check explicit rcNumber and tin if unprovided
     if (!quote.rcNumber || quote.rcNumber.trim().length === 0) {
       queries.push('No Corporate Affairs Commission (CAC) RC registration number provided on quotation.');
-      if (quote.eligibility && (quote.eligibility as any).cacIncorporation === false) {
-        // Already recorded
-      }
     }
     if (!quote.tin || quote.tin.trim().length === 0) {
       queries.push('No Federal Inland Revenue Service (FIRS) Tax Identification Number (TIN) provided.');
@@ -763,7 +766,7 @@ export function evaluateBids(
       const lineTotal = item.quantity * item.unitPrice;
       calculatedLineSum += lineTotal;
       if (Math.abs(lineTotal - item.amount) > 1) {
-        const note = `Line #${itIdx + 1} (${item.name}): Stated ₦${item.amount.toLocaleString()} corrected to ₦${lineTotal.toLocaleString()} (${item.quantity} ${item.unit} @ ₦${item.unitPrice.toLocaleString()}) per PPA Sec 31.`;
+        const note = `Line #${itIdx + 1} (${item.name}): Stated ${money(item.amount, quote.currency)} corrected to ${money(lineTotal, quote.currency)} (${item.quantity} ${item.unit} @ ${money(item.unitPrice, quote.currency)}) per PPA Sec 31.`;
         queries.push(note);
         arithmeticNotes.push(note);
       }
@@ -775,7 +778,7 @@ export function evaluateBids(
 
     if (lineSumDiscrepancy) {
       queries.push(
-        `Subtotal arithmetic discrepancy: Stated ₦${statedSubtotal.toLocaleString()} vs sum of line items ₦${calculatedLineSum.toLocaleString()} (diff: ₦${lineSumDifference.toLocaleString()}). Unit rate upheld per PPA 2007 Section 31.`
+        `Subtotal arithmetic discrepancy: Stated ${money(statedSubtotal, quote.currency)} vs sum of line items ${money(calculatedLineSum, quote.currency)} (diff: ${money(lineSumDifference, quote.currency)}). Unit rate upheld per PPA 2007 Section 31.`
       );
     }
 
@@ -803,12 +806,20 @@ export function evaluateBids(
       // Standard Harmonized Landed Cost
       const vatRate = options?.vatRate ?? (quote.vat.rate || 7.5);
       if (quote.vat.isInclusive) {
-        evaluatedCost = quote.total > 0 ? quote.total : baseCost;
-        vatNotes = `Quotation stated inclusive of ${vatRate}% VAT (₦${(quote.vat.statedAmount || 0).toLocaleString()}). Evaluated at gross total.`;
+        const correctionApplied = applyArithmetic && lineSumDiscrepancy;
+        if (correctionApplied || !(quote.total > 0)) {
+          // Stated gross total is unreliable (or absent): rebuild it from the corrected net subtotal
+          evaluatedCost = baseCost * (1 + vatRate / 100);
+          vatNotes = `Quotation stated inclusive of ${vatRate}% VAT. Gross total recomputed from corrected subtotal at ${money(Math.round(evaluatedCost), quote.currency)}.`;
+          infos.push(vatNotes);
+        } else {
+          evaluatedCost = quote.total;
+          vatNotes = `Quotation stated inclusive of ${vatRate}% VAT (${money(quote.vat.statedAmount || 0, quote.currency)}). Evaluated at gross total.`;
+        }
       } else {
         vatAdded = (baseCost * vatRate) / 100;
         evaluatedCost = baseCost + vatAdded;
-        vatNotes = `Statutory ${vatRate}% VAT (₦${Math.round(vatAdded).toLocaleString()}) added to bring quote to common evaluated landed cost.`;
+        vatNotes = `Statutory ${vatRate}% VAT (${money(vatAdded, quote.currency)}) added to bring quote to common evaluated landed cost.`;
         infos.push(vatNotes);
       }
     }
@@ -816,11 +827,11 @@ export function evaluateBids(
     const correctedTotal = correctedSubtotal + vatAdded;
 
     // Convert currency if foreign
-    if (quote.currency !== currency && quote.exchangeRateToNgn) {
-      const fxRate = quote.exchangeRateToNgn;
-      evaluatedCost = evaluatedCost * fxRate;
+    const quoteFx = fxOf(quote);
+    if (quoteFx !== 1) {
+      evaluatedCost = evaluatedCost * quoteFx;
       infos.push(
-        `Converted from ${quote.currency} at exchange rate of 1 ${quote.currency} = ₦${fxRate.toLocaleString()} to ₦${Math.round(evaluatedCost).toLocaleString()}.`
+        `Converted from ${quote.currency} at exchange rate of 1 ${quote.currency} = ${currencySymbol(currency)}${quoteFx.toLocaleString('en-US')} to ${money(evaluatedCost)}.`
       );
     }
 
@@ -846,7 +857,10 @@ export function evaluateBids(
         let loadedTotal = 0;
         missingItems.forEach((mItem) => {
           const allOtherPrices = quotations
-            .map((q) => q.items.find((it) => it.matchReqItemId === mItem.id)?.unitPrice)
+            .map((q) => {
+              const price = q.items.find((it) => it.matchReqItemId === mItem.id)?.unitPrice;
+              return typeof price === 'number' ? price * fxOf(q) : undefined;
+            })
             .filter((p): p is number => typeof p === 'number' && p > 0);
           const penaltyPrice = allOtherPrices.length > 0 ? Math.max(...allOtherPrices) : (mItem.budgetBenchmarkPrice || 0);
           loadedTotal += penaltyPrice * mItem.quantity;
@@ -854,21 +868,13 @@ export function evaluateBids(
         missingItemsLoadedCost = loadedTotal;
         evaluatedCost += loadedTotal;
         infos.push(
-          `PPA 2007 Sec 32(3) Adjustment: Loaded highest competing unit price for ${missingItems.length} unquoted line(s) (+₦${Math.round(loadedTotal).toLocaleString()}) to establish equitable comparative evaluation.`
+          `PPA 2007 Sec 32(3) Adjustment: Loaded highest competing unit price for ${missingItems.length} unquoted line(s) (+${money(loadedTotal)}) to establish equitable comparative evaluation.`
         );
       } else {
         blocks.push(
           `Incomplete tender: Failed to quote ${missingItems.length} mandatory requisition item(s): [${missingNames}]. Bid is non-responsive.`
         );
       }
-    }
-
-    // Statutory Registration Check (PPA 2007 Section 16(6))
-    if (!quote.rcNumber || quote.rcNumber.trim().length === 0) {
-      queries.push('No Corporate Affairs Commission (CAC) RC registration number provided on quotation.');
-    }
-    if (!quote.tin || quote.tin.trim().length === 0) {
-      queries.push('No Federal Inland Revenue Service (FIRS) Tax Identification Number (TIN) provided.');
     }
 
     // Bank Account Name Match Check (Anti-Money Laundering & Public Finance Management)
@@ -888,19 +894,20 @@ export function evaluateBids(
       if (qi.matchReqItemId) {
         const reqItem = reqItemMap.get(qi.matchReqItemId);
         if (reqItem && reqItem.budgetBenchmarkPrice && reqItem.budgetBenchmarkPrice > 0) {
-          const ratio = qi.unitPrice / reqItem.budgetBenchmarkPrice;
+          const unitPriceEval = qi.unitPrice * quoteFx;
+          const ratio = unitPriceEval / reqItem.budgetBenchmarkPrice;
 
           // Check for price inflation
           if (ratio > 1.35) {
             queries.push(
-              `Unit price for "${qi.name}" (₦${qi.unitPrice.toLocaleString()}) is ${Math.round(
+              `Unit price for "${qi.name}" (${money(unitPriceEval)}) is ${Math.round(
                 (ratio - 1) * 100
-              )}% above the official MDA budgetary benchmark (₦${reqItem.budgetBenchmarkPrice.toLocaleString()}).`
+              )}% above the official MDA budgetary benchmark (${money(reqItem.budgetBenchmarkPrice)}).`
             );
             albWarnings.push({
               supplierName: quote.supplierName,
               itemName: qi.name,
-              unitPrice: qi.unitPrice,
+              unitPrice: unitPriceEval,
               benchmarkPrice: reqItem.budgetBenchmarkPrice,
               variancePct: Math.round((ratio - 1) * 100),
               severity: 'inflated',
@@ -912,16 +919,16 @@ export function evaluateBids(
           if (ratio < (1 - albThreshold / 100)) {
             const underPct = Math.round((1 - ratio) * 100);
             queries.push(
-              `Abnormally Low Bid (ALB) on "${qi.name}": Unit price (₦${qi.unitPrice.toLocaleString()}) is ${underPct}% below budgetary benchmark. Risk of substandard materials or non-delivery.`
+              `Abnormally Low Bid (ALB) on "${qi.name}": Unit price (${money(unitPriceEval)}) is ${underPct}% below budgetary benchmark. Risk of substandard materials or non-delivery.`
             );
             albWarnings.push({
               supplierName: quote.supplierName,
               itemName: qi.name,
-              unitPrice: qi.unitPrice,
+              unitPrice: unitPriceEval,
               benchmarkPrice: reqItem.budgetBenchmarkPrice,
               variancePct: underPct,
               severity: 'abnormally_low',
-              reason: `Unit price is ${underPct}% below budgetary benchmark (₦${reqItem.budgetBenchmarkPrice.toLocaleString()}). Substandard goods risk.`,
+              reason: `Unit price is ${underPct}% below budgetary benchmark (${money(reqItem.budgetBenchmarkPrice)}). Substandard goods risk.`,
             });
           }
         }
@@ -931,10 +938,15 @@ export function evaluateBids(
     // Validity Period Check
     let validDaysLeft: number | undefined;
     if (quote.validity) {
-      const valNum = parseInt(quote.validity, 10);
+      const isCalendarDate = /^\d{4}-\d{2}-\d{2}/.test(quote.validity.trim());
+      const valNum = isCalendarDate
+        ? Math.ceil((Date.parse(quote.validity.trim()) - Date.now()) / 86_400_000)
+        : parseInt(quote.validity, 10);
       if (!isNaN(valNum)) {
         validDaysLeft = valNum;
-        if (valNum <= 14) {
+        if (valNum <= 0) {
+          blocks.push(`Quotation validity (${quote.validity}) has expired. Bid cannot be accepted without a written extension.`);
+        } else if (valNum <= 14) {
           queries.push(`Short validity period (${quote.validity}). Request written validity extension prior to contract award.`);
         }
       }
@@ -1123,7 +1135,7 @@ export function evaluateBids(
       type: 'rounding',
       severity: 'warning',
       title: 'Suspicious Round Figures Pattern',
-      description: 'Every submitted quotation subtotal is an exact multiple of ₦50,000. Genuine competitive market pricing typically displays granular pence/kobo precision.',
+      description: `Every submitted quotation subtotal is an exact multiple of ${money(50000)}. Genuine competitive market pricing typically displays granular pence/kobo precision.`,
       involvedSuppliers: quotations.map((q) => q.supplierName),
     });
   }
@@ -1201,23 +1213,23 @@ export function evaluateBids(
       quotations.length
     } participating suppliers for this requisition.\n\n` +
       `Following comprehensive preliminary examination (CAC, TCC, PENCOM, ITF, NSITF, BPP IRR), technical specification compliance check, arithmetic verification & correction under PPA Section 31, and VAT harmonization (${
-        options?.vatExempt ? 'evaluated as statutory VAT-exempt' : 'evaluated at a uniform statutory VAT rate of 7.5%'
+        options?.vatExempt ? 'evaluated as statutory VAT-exempt' : `evaluated at a uniform statutory VAT rate of ${options?.vatRate ?? 7.5}%`
       }), ${
         responsiveSuppliers.length
       } quotation(s) were certified as fully responsive, while ${
         nonResponsiveSuppliers.length
       } quotation(s) were disqualified on statutory grounds.\n\n` +
-      `Under the evaluated methodology [${methodDesc}], the bid submitted by ${winner.quotation.supplierName} in the evaluated landed amount of ₦${winner.evaluatedCost.toLocaleString()} represents the RECOMMENDED WINNING TENDER. The supplier demonstrated full scope completeness (${
+      `Under the evaluated methodology [${methodDesc}], the bid submitted by ${winner.quotation.supplierName} in the evaluated landed amount of ${money(winner.evaluatedCost)} represents the RECOMMENDED WINNING TENDER. The supplier demonstrated full scope completeness (${
         winner.itemsQuotedCount
       }/${winner.itemsRequiredCount} items priced), certified preliminary eligibility, compliant commercial terms (${winner.quotation.paymentTerms}), and acceptable delivery timeframe (${
         winner.quotation.deliveryPeriod
       }).\n\n` +
-      `Awarding this procurement to ${winner.quotation.supplierName} yields a direct public expenditure saving of ₦${savingsVsHighest.toLocaleString()} (${savingsPct.toFixed(
+      `Awarding this procurement to ${winner.quotation.supplierName} yields a direct public expenditure saving of ${money(savingsVsHighest)} (${savingsPct.toFixed(
         1
       )}%) compared against the highest evaluated tender, and satisfies all statutory value-for-money benchmarks.\n\n` +
       `RECOMMENDATION & MANDATORY STANDSTILL: It is respectfully recommended that in compliance with statutory procurement regulations, a Standstill Notice of 14 calendar days be communicated to all participating tenderers. Subject to absence of administrative review petitions, an official Award Letter / Local Purchase Order (LPO) shall be issued to ${
         winner.quotation.supplierName
-      } in the amount of ₦${winner.evaluatedCost.toLocaleString()}.`;
+      } in the amount of ${money(winner.evaluatedCost)}.`;
   } else {
     narrative = `Following examination of the ${quotations.length} received quotation(s), NO BIDDER was found to be fully responsive to the mandatory preliminary eligibility criteria, technical specifications, and treasury regulations. All submitted tenders incurred disqualifying blocking conditions. In compliance with PPA 2007 Section 33, it is recommended that this procurement exercise be cancelled and re-tendered with revised specifications.`;
   }
