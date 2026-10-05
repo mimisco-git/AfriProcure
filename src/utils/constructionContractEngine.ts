@@ -13,6 +13,9 @@
  *   * Section 37: Retention Money statutory protection
  */
 
+import { CurrencyCode } from '../types';
+import { formatCurrency } from './cpaMath';
+
 export interface EotDelayEvent {
   id: string;
   eventType: 'employer_delay' | 'force_majeure' | 'contractor_delay' | 'exceptionally_adverse_climatic';
@@ -78,6 +81,7 @@ export function calculateEotAndLiquidatedDamages(params: {
   actualCompletionDays: number;
   dailyLdRatePct?: number; // default 0.1% per calendar day
   maxLdCapPct?: number;    // default 10% or 15% statutory cap
+  currency?: CurrencyCode;
 }): EotCalculationResult {
   const {
     contractSum,
@@ -86,6 +90,7 @@ export function calculateEotAndLiquidatedDamages(params: {
     actualCompletionDays,
     dailyLdRatePct = 0.1,
     maxLdCapPct = 10,
+    currency = 'NGN',
   } = params;
 
   // Filter approved compensable or excusable days that impact critical path
@@ -112,9 +117,9 @@ export function calculateEotAndLiquidatedDamages(params: {
   if (contractorCulpableDelayDays === 0) {
     statutorySummary = `Project completed within authorized period (Original: ${originalDurationDays} days + Approved EOT: ${authorizedEotDays} days). Zero Liquidated Damages apply.`;
   } else if (isLdCapReached) {
-    statutorySummary = `Contractor exceeded completion date by ${contractorCulpableDelayDays} unexcused days. Liquidated Damages capped at statutory maximum ceiling of ${maxLdCapPct}% of Contract Sum (₦${(maxLdCapAmount / 1_000_000).toFixed(2)}M). Under FIDIC Clause 15.2, Employer may now initiate contract termination for fundamental default.`;
+    statutorySummary = `Contractor exceeded completion date by ${contractorCulpableDelayDays} unexcused days. Liquidated Damages capped at statutory maximum ceiling of ${maxLdCapPct}% of Contract Sum (${formatCurrency(maxLdCapAmount, currency)}). Under FIDIC Clause 15.2, Employer may now initiate contract termination for fundamental default.`;
   } else {
-    statutorySummary = `Contractor culpable delay of ${contractorCulpableDelayDays} calendar days assessed at 0.1%/day. Total recoverable Delay Damages: ₦${(totalLiquidatedDamages / 1_000_000).toFixed(2)}M to be deducted from subsequent IPC or Performance Security under FIDIC Clause 8.7.`;
+    statutorySummary = `Contractor culpable delay of ${contractorCulpableDelayDays} calendar days assessed at ${dailyLdRatePct}%/day. Total recoverable Delay Damages: ${formatCurrency(totalLiquidatedDamages, currency)} to be deducted from subsequent IPC or Performance Security under FIDIC Clause 8.7.`;
   }
 
   return {
@@ -176,7 +181,7 @@ export function simulateApgAndRetentionSchedule(params: {
 
   monthlyGrossValuations.forEach((workDoneGross, index) => {
     cumulativeWorkDone += workDoneGross;
-    const cumulativePctOfContract = (cumulativeWorkDone / contractSum) * 100;
+    const cumulativePctOfContract = contractSum > 0 ? (cumulativeWorkDone / contractSum) * 100 : 0;
 
     // Check if recovery has commenced (cumulative work > recoveryStartThreshold)
     let advanceDeductionThisIpc = 0;

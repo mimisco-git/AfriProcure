@@ -3,35 +3,41 @@ import { ContractProject, MilestonePayment, PriceComponent, TenderBidder, Tender
 /**
  * Format currency nicely with appropriate symbol
  */
-export function formatCurrency(amount: number, currency: CurrencyCode = 'NGN'): string {
-  const symbols: Record<CurrencyCode, string> = {
-    NGN: '₦',
-    GHS: 'GH₵',
-    KES: 'KSh ',
-    ZAR: 'R ',
-    USD: '$',
-  };
+export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  NGN: '₦',
+  GHS: 'GH₵',
+  KES: 'KSh ',
+  ZAR: 'R ',
+  USD: '$',
+};
 
-  const symbol = symbols[currency] || '₦';
-  
-  if (Math.abs(amount) >= 1_000_000_000) {
-    return `${symbol}${(amount / 1_000_000_000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}B`;
+export function currencySymbol(currency: CurrencyCode = 'NGN'): string {
+  return CURRENCY_SYMBOLS[currency] || '₦';
+}
+
+/**
+ * Format currency nicely with appropriate symbol. Negative amounts render as "-₦1.00M".
+ */
+export function formatCurrency(amount: number, currency: CurrencyCode = 'NGN'): string {
+  if (!Number.isFinite(amount)) return `${currencySymbol(currency)}—`;
+  const sign = amount < 0 ? '-' : '';
+  const symbol = currencySymbol(currency);
+  const abs = Math.abs(amount);
+  const fmt = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  if (abs >= 1_000_000_000) {
+    return `${sign}${symbol}${fmt(abs / 1_000_000_000)}B`;
   }
-  if (Math.abs(amount) >= 1_000_000) {
-    return `${symbol}${(amount / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`;
+  if (abs >= 1_000_000) {
+    return `${sign}${symbol}${fmt(abs / 1_000_000)}M`;
   }
-  return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${sign}${symbol}${fmt(abs)}`;
 }
 
 export function formatFullCurrency(amount: number, currency: CurrencyCode = 'NGN'): string {
-  const symbols: Record<CurrencyCode, string> = {
-    NGN: '₦',
-    GHS: 'GH₵',
-    KES: 'KSh ',
-    ZAR: 'R ',
-    USD: '$',
-  };
-  return `${symbols[currency] || '₦'}${Math.round(amount).toLocaleString('en-US')}`;
+  if (!Number.isFinite(amount)) return `${currencySymbol(currency)}—`;
+  const sign = amount < 0 ? '-' : '';
+  return `${sign}${currencySymbol(currency)}${Math.abs(Math.round(amount)).toLocaleString('en-US')}`;
 }
 
 export function formatPercent(value: number, decimals: number = 1): string {
@@ -79,7 +85,10 @@ export function generateIpcSchedule(
   project: ContractProject,
   monthlyInflationFactor: number = 0.018 // ~1.8% monthly compounding benchmark
 ): MilestonePayment[] {
-  const months = project.durationMonths;
+  const months = Math.floor(project.durationMonths);
+  if (!(months > 0) || !(project.contractSumInitial > 0)) {
+    return [];
+  }
   const totalContract = project.contractSumInitial;
   const monthlyBaseWork = totalContract / months;
 
@@ -133,11 +142,12 @@ export function generateIpcSchedule(
 
     // Estimate contractor actual market execution costs
     // Contractors experience raw unhedged cost inflation (weighted 100% of material/labor)
-    const rawCostInflation = calculateCpaMultiplier(0, currentComponents.map(c => ({
-      weight: c.weight / (1 - project.nonAdjustableFactor),
+    const adjustableShare = 1 - project.nonAdjustableFactor;
+    const rawCostInflation = adjustableShare > 0 ? calculateCpaMultiplier(0, currentComponents.map(c => ({
+      weight: c.weight / adjustableShare,
       baseValue: c.baseValue,
       currentValue: c.currentValue,
-    })));
+    }))) : 1;
 
     const contractorActualCost = grossBase * 0.82 * rawCostInflation; // base baseline margin was 18%
     
@@ -196,7 +206,8 @@ export function generateIpcSchedule(
  */
 export function evaluateTenderBids(
   engineersEstimate: number,
-  bidders: TenderBidder[]
+  bidders: TenderBidder[],
+  currency: CurrencyCode = 'NGN'
 ): TenderAuditResult {
   if (bidders.length === 0) {
     return {
@@ -218,12 +229,13 @@ export function evaluateTenderBids(
 
   const minBid = sortedBids[0].bidAmount;
   const maxBid = sortedBids[sortedBids.length - 1].bidAmount;
-  const spreadPct = ((maxBid - minBid) / medianBid) * 100;
+  const spreadPct = medianBid > 0 ? ((maxBid - minBid) / medianBid) * 100 : 0;
 
   const clusterWarnings: string[] = [];
   
   // Check for suspicious bid clustering (cover bidding)
   for (let i = 0; i < sortedBids.length - 1; i++) {
+    if (!(sortedBids[i].bidAmount > 0)) continue;
     const diffPct = Math.abs(sortedBids[i + 1].bidAmount - sortedBids[i].bidAmount) / sortedBids[i].bidAmount * 100;
     if (diffPct < 0.6) {
       clusterWarnings.push(
@@ -253,8 +265,8 @@ export function evaluateTenderBids(
 
   // Evaluate each bidder
   const evaluated = bidders.map((bidder) => {
-    const varianceFromEstimatePct = ((bidder.bidAmount - engineersEstimate) / engineersEstimate) * 100;
-    const varianceFromMedianPct = ((bidder.bidAmount - medianBid) / medianBid) * 100;
+    const varianceFromEstimatePct = engineersEstimate > 0 ? ((bidder.bidAmount - engineersEstimate) / engineersEstimate) * 100 : 0;
+    const varianceFromMedianPct = medianBid > 0 ? ((bidder.bidAmount - medianBid) / medianBid) * 100 : 0;
     
     // Domestic margin of preference: 7.5% preference rule under PPA 2007 Section 34(1)
     // If bidder is domestic, for evaluation comparison against foreign firms, their bid is discounted by 7.5%
@@ -262,7 +274,7 @@ export function evaluateTenderBids(
       ? bidder.bidAmount * 0.925 
       : bidder.bidAmount;
 
-    // Abnormally Low Tender (ALT) test: < -20% below estimate or < -15% below median
+    // Abnormally Low Tender (ALT) test: more than 22% below estimate or more than 18% below median
     const isAbnormallyLow = varianceFromEstimatePct < -22 || varianceFromMedianPct < -18;
 
     const suspicionFlags: string[] = [];
@@ -316,7 +328,7 @@ export function evaluateTenderBids(
   let auditRemarks = '';
   if (responsiveBids.length > 0) {
     const winner = responsiveBids[0];
-    auditRemarks = `Recommended Award: "${winner.bidder.companyName}" at ${formatCurrency(winner.bidder.bidAmount)} as the lowest evaluated responsive and qualified bid under Section 34 of the Public Procurement Act (PPA 2007).`;
+    auditRemarks = `Recommended Award: "${winner.bidder.companyName}" at ${formatCurrency(winner.bidder.bidAmount, currency)} as the lowest evaluated responsive and qualified bid under Section 34 of the Public Procurement Act (PPA 2007).`;
   } else {
     auditRemarks = 'Audit Warning: All submitted tenders either failed technical thresholds, statutory clearances, or were flagged as Abnormally Low Tenders (ALT). Re-tendering or formal cost-breakdown defense recommended.';
   }
