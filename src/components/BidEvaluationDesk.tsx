@@ -52,6 +52,7 @@ import {
   EvaluationCommitteeMember,
   EvaluatedSupplier,
 } from '../types';
+import type { WorkspaceStore } from '../workspace/store';
 import { formatCurrency, formatFullCurrency } from '../utils/cpaMath';
 import {
   WORKED_EXAMPLE_ITEMS,
@@ -70,13 +71,16 @@ import { AfriProcureLogo } from './AfriProcureLogo';
 interface BidEvaluationDeskProps {
   currency: CurrencyCode;
   onTransferToContract?: (newProject: Partial<ContractProject>) => void;
+  /** Where saved evaluation dossiers are kept (browser or organization workspace) */
+  evaluationStore: Pick<WorkspaceStore, 'mode' | 'listEvaluations' | 'saveEvaluation'>;
+  canSaveEvaluations: boolean;
 }
-
-const LOCAL_STORAGE_KEY = 'afriprocure_bid_evaluations_v1';
 
 export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
   currency,
   onTransferToContract,
+  evaluationStore,
+  canSaveEvaluations,
 }) => {
   // Navigation within Desk: 'setup' | 'quotations' | 'report'
   const [activeStep, setActiveStep] = useState<'setup' | 'quotations' | 'report'>('report');
@@ -134,20 +138,22 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
   const [customNarrative, setCustomNarrative] = useState<string>('');
   const [copiedNotification, setCopiedNotification] = useState(false);
 
-  // Load saved evaluations from local storage on mount
+  // Load saved evaluations from the workspace store on mount
+  const [savingEvaluation, setSavingEvaluation] = useState(false);
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setSavedEvaluations(parsed);
-        }
-      }
-    } catch {
-      // Fallback
-    }
-  }, []);
+    let cancelled = false;
+    evaluationStore
+      .listEvaluations()
+      .then((list) => {
+        if (!cancelled) setSavedEvaluations(list);
+      })
+      .catch((err: unknown) => {
+        console.error('[AfriProcure] Could not load saved evaluations', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [evaluationStore]);
 
   // Compute evaluation results
   const evaluationResult: BidEvaluationResult = useMemo(() => {
@@ -318,8 +324,9 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
     }
   };
 
-  // Handle Saving to Local Storage
-  const handleSaveEvaluation = () => {
+  // Handle saving to the workspace store
+  const handleSaveEvaluation = async () => {
+    if (!canSaveEvaluations || savingEvaluation) return;
     const newSave: SavedBidEvaluation = {
       id: 'eval-' + Date.now(),
       savedAt: Date.now(),
@@ -337,13 +344,20 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
       currency,
     };
 
-    const updated = [newSave, ...savedEvaluations.slice(0, 15)];
-    setSavedEvaluations(updated);
+    setSavingEvaluation(true);
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      alert('Evaluation dossier saved to browser storage successfully.');
-    } catch {
-      // ignore
+      await evaluationStore.saveEvaluation(newSave);
+      setSavedEvaluations((prev) => [newSave, ...prev.filter((e) => e.id !== newSave.id)]);
+      alert(
+        evaluationStore.mode === 'cloud'
+          ? 'Evaluation dossier saved to your organization workspace.'
+          : 'Evaluation dossier saved to this browser.'
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : typeof err === 'object' && err && 'message' in err ? String((err as { message: unknown }).message) : 'Unknown error';
+      alert(`The evaluation dossier could not be saved: ${message}`);
+    } finally {
+      setSavingEvaluation(false);
     }
   };
 
@@ -744,7 +758,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
         awardDate: evaluationDate,
         baseDate: evaluationDate,
       });
-      alert(`Contract parameters for "${win.quotation.supplierName}" (₦${win.evaluatedCost.toLocaleString()}) have been loaded into the Contract & CPA Indexation Engine.`);
+      alert(`Contract parameters for "${win.quotation.supplierName}" (${formatFullCurrency(win.evaluatedCost, currency)}) have been loaded into the Contract & CPA Indexation Engine.`);
     }
   };
 
@@ -788,11 +802,13 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
             </button>
 
             <button
-              onClick={handleSaveEvaluation}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-xs border border-stone-700/80 transition-colors"
+              onClick={() => void handleSaveEvaluation()}
+              disabled={!canSaveEvaluations || savingEvaluation}
+              title={canSaveEvaluations ? undefined : 'Your role cannot save bid evaluations'}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed text-stone-200 font-medium text-xs border border-stone-700/80 transition-colors"
             >
               <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Save Evaluation
+              {savingEvaluation ? 'Saving…' : 'Save Evaluation'}
             </button>
           </div>
         </div>
@@ -2121,7 +2137,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                                 className="text-[9px] text-amber-700 font-bold"
                                 title={s.arithmeticNotes.join('; ')}
                               >
-                                PPA 31: ₦{s.lineSumDifference.toLocaleString()} corrected
+                                PPA 31: {formatFullCurrency(s.lineSumDifference, s.quotation.currency)} corrected
                               </div>
                             )}
                           </td>
@@ -2136,7 +2152,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                               </span>
                             ) : (
                               <span className="text-amber-800 text-[11px] font-medium font-mono">
-                                +₦{s.vatAdded.toLocaleString()}
+                                +{formatFullCurrency(s.vatAdded, s.quotation.currency)}
                               </span>
                             )}
                           </td>
@@ -2269,7 +2285,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                                 }`}
                               >
                                 <div className="text-stone-900 font-semibold">
-                                  ₦{quotedItem.unitPrice.toLocaleString()}
+                                  {formatFullCurrency(quotedItem.unitPrice, q.currency)}
                                   {isMin && (
                                     <span className="ml-1 text-[9px] text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded font-sans">
                                       Lowest
@@ -2277,7 +2293,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                                   )}
                                 </div>
                                 <div className="text-[10px] text-stone-500">
-                                  ₦{quotedItem.amount.toLocaleString()}
+                                  {formatFullCurrency(quotedItem.amount, q.currency)}
                                 </div>
                               </td>
                             );
@@ -2853,7 +2869,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                         {ev.organization} • Ref: {ev.requisitionRef} • {new Date(ev.savedAt).toLocaleDateString()}
                       </div>
                       <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-                        Winner: {ev.winnerName || 'No award'} (₦{(ev.evaluatedCost || 0).toLocaleString()})
+                        Winner: {ev.winnerName || 'No award'} ({formatFullCurrency(ev.evaluatedCost || 0, ev.currency)})
                       </div>
                     </div>
 
@@ -3105,7 +3121,7 @@ export const BidEvaluationDesk: React.FC<BidEvaluationDeskProps> = ({
                   .filter((s) => s.quotation.id !== evaluationResult.winner?.quotation.id)
                   .map((s) => (
                     <option key={s.quotation.id} value={s.quotation.id}>
-                      {s.quotation.supplierName} — Rank {s.rank} ({s.isResponsive ? 'Responsive' : 'Disqualified'}) — Landed: ₦{s.evaluatedCost.toLocaleString()}
+                      {s.quotation.supplierName} — Rank {s.rank} ({s.isResponsive ? 'Responsive' : 'Disqualified'}) — Landed: {formatFullCurrency(s.evaluatedCost, currency)}
                     </option>
                   ))}
               </select>
